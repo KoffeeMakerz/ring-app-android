@@ -810,3 +810,38 @@ at all.** Two further shapes of the same failure, fixed together:
   and the two cases mask differently: `frame_start` keeps its family's header (it is there, and it is
   what identifies the reply), `frame_chunk` keeps byte 0 and nothing else, because the middle of a
   frame is payload from byte 0 on.
+
+## Knowledge base workflow for future agents
+
+Before significant work:
+
+1. Read `knowledge/INDEX.md`.
+2. Read the relevant subsystem docs in `knowledge/*.md` before editing code.
+3. Inspect implementation code paths directly before proposing protocol changes.
+
+Working rules:
+
+1. Prefer small, verifiable changes.
+2. Avoid unnecessary refactors.
+3. Preserve known BLE behavior unless evidence and tests justify a change.
+4. Never treat undocumented BLE assumptions as confirmed behavior.
+
+Knowledge maintenance:
+
+1. Update `knowledge/discoveries.md` for durable technical findings.
+2. Update `knowledge/decisions.md` for architectural decisions.
+3. Keep protocol/hardware certainty explicit using:
+  - `Status: source-confirmed`
+  - `Status: hardware-verified`
+  - `Status: unverified`
+
+Cross-platform check:
+
+1. When behavior spans platforms, compare with sibling iOS implementation.
+2. Requested sibling reference: `../PulseLoopiOS`.
+3. Current workspace sibling path: `../ring-app-ios`.
+
+Completion gate:
+
+1. Build/test affected behavior before declaring completion.
+2. Preserve upstream LICENSE and attribution obligations.
