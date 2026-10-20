@@ -51,7 +51,8 @@ object CalmCue {
     enum class Level(val label: String) { NONE("normal"), ELEVATED("raised"), HIGH("high") }
 
     data class Baseline(val days: Int = 0, val restingHr: Double? = null, val hrvMedian: Double? = null) {
-        val ready: Boolean get() = days >= MIN_BASELINE_DAYS && restingHr != null
+        /** Any of heart rate, HRV or stress counts: some rings send HRV but no heart-rate history. */
+        val ready: Boolean get() = days >= MIN_BASELINE_DAYS
     }
 
     const val STILL_MINUTES = 15
@@ -68,12 +69,18 @@ object CalmCue {
     @Volatile var buzzer: ((TouchPattern) -> Unit)? = null
     @Volatile var isRingConnected: () -> Boolean = { false }
     @Volatile var reconnect: () -> Unit = {}
+    /** One spot heart-rate reading from the app's ring connection (null when it can't). */
+    @Volatile var measureHr: (suspend () -> Int?)? = null
+    @Volatile var canMeasureHr: () -> Boolean = { false }
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private val mutex = Mutex()
     private var lastEvaluation = 0L
     private var lastLoggedOutcome = ""
     private var baselineCache: Pair<Long, Baseline>? = null
+    /** A spot heart-rate reading taken for the check when the ring sent no recent heart rate. */
+    private var spotHr: Pair<Double, Long>? = null
+    @Volatile private var measuringSpot = false
 
     private val _lastAssessment = MutableStateFlow("Not checked yet")
     val lastAssessment: StateFlow<String> = _lastAssessment.asStateFlow()
@@ -120,6 +127,18 @@ object CalmCue {
             if (!baseline.ready) { outcome(context, trigger, "learning your normal (${baseline.days} of $MIN_BASELINE_DAYS days)"); return }
             stillness(context, db, now)?.let { outcome(context, trigger, it); return }
 
+            // No recent heart rate from the ring's history: take one spot reading (at most every 10 min).
+            if (needsSpotHr(db, now)) {
+                measuringSpot = true
+                outcome(context, trigger, "still · measuring heart rate")
+                scope.launch {
+                    val v = runCatching { measureHr?.invoke() }.getOrNull()
+                    measuringSpot = false
+                    spotHr = (v ?: 0).toDouble() to System.currentTimeMillis()
+                    if (v != null) evaluate(context, "spot heart rate", force = true)
+                }
+                return
+            }
             val (level, reason) = assess(db, now, baseline)
             val needed = if (sensitivity(context) == "high") Level.HIGH else Level.ELEVATED
             if (level < needed) {
@@ -221,6 +240,26 @@ object CalmCue {
         return null
     }
 
+    private suspend fun needsSpotHr(db: PulseLoopDatabase, now: Long): Boolean {
+        if (measuringSpot || measureHr == null || !canMeasureHr()) return false
+        spotHr?.let { if (now - it.second < 10 * 60_000L) return false }
+        return readings(db, MeasurementKind.HEART_RATE, now - READING_WINDOW_MINUTES * 60_000L, now).size < 2
+    }
+
+    /** Latest heart rate, HRV and stress the ring has sent: (name, value, epoch millis or null). */
+    suspend fun latestReadings(context: Context): List<Triple<String, String, Long?>> {
+        val db = PulseLoopDatabase.getInstance(context)
+        val now = System.currentTimeMillis()
+        val week = now - 7 * 86_400_000L
+        fun row(name: String, m: MeasurementEntity?, unit: String) =
+            Triple(name, m?.let { "${it.value.toInt()}$unit" } ?: "none in 7 days", m?.timestamp)
+        return listOf(
+            row("Heart rate", readings(db, MeasurementKind.HEART_RATE, week, now).lastOrNull(), " bpm"),
+            row("HRV", readings(db, MeasurementKind.HRV, week, now).lastOrNull(), " ms"),
+            row("Stress", readings(db, MeasurementKind.STRESS, week, now).lastOrNull(), ""),
+        )
+    }
+
     private suspend fun assess(db: PulseLoopDatabase, now: Long, baseline: Baseline): Pair<Level, String> {
         val since = now - READING_WINDOW_MINUTES * 60_000L
         var level = Level.NONE
@@ -234,9 +273,12 @@ object CalmCue {
             if (l > Level.NONE) reasons += "stress ${s.toInt()}"
             raise(l)
         }
-        val hr = readings(db, MeasurementKind.HEART_RATE, since, now).map { it.value }.filter { it in 35.0..200.0 }
+        var hr = readings(db, MeasurementKind.HEART_RATE, since, now).map { it.value }.filter { it in 35.0..200.0 }
+        val spot = spotHr
+        val usedSpot = hr.size < 2 && spot != null && now - spot.second < READING_WINDOW_MINUTES * 60_000L && spot.first >= 35
+        if (usedSpot && spot != null) hr = listOf(spot.first)
         val rest = baseline.restingHr
-        if (hr.size >= 2 && rest != null) {
+        if ((hr.size >= 2 || usedSpot) && rest != null) {
             val low = hr.min()
             val over = low - rest
             val l = if (over >= 25) Level.HIGH else if (over >= 15) Level.ELEVATED else Level.NONE
@@ -251,7 +293,7 @@ object CalmCue {
             if (l > Level.NONE) reasons += "HRV ${hrv.toInt()} vs usual ${median.toInt()} ms"
             raise(l)
         }
-        if (stress.isEmpty() && hr.size < 2 && reasons.isEmpty()) reasons += "no fresh readings"
+        if (stress.isEmpty() && hr.isEmpty() && reasons.isEmpty()) reasons += "no fresh readings"
         return level to reasons.joinToString(", ")
     }
 
@@ -260,8 +302,9 @@ object CalmCue {
         baselineCache?.let { (at, value) -> if (now - at < 3_600_000L) return value }
         val since = now - 7 * 86_400_000L
         val hr = readings(db, MeasurementKind.HEART_RATE, since, now).filter { it.value in 35.0..200.0 }
-        val days = hr.map { startOfDay(it.timestamp) }.toSet().size
-        val resting = if (hr.size >= 40) hr.map { it.value }.sorted().let { it[(it.size * 0.2).toInt()] } else null
+        val any = hr + readings(db, MeasurementKind.HRV, since, now) + readings(db, MeasurementKind.STRESS, since, now)
+        val days = any.map { startOfDay(it.timestamp) }.toSet().size
+        val resting = if (hr.size >= 20) hr.map { it.value }.sorted().let { it[(it.size * 0.2).toInt()] } else null
         val hrv = readings(db, MeasurementKind.HRV, since, now).map { it.value }.filter { it > 0 }.sorted()
         val b = Baseline(days, resting, if (hrv.size >= 10) hrv[hrv.size / 2] else null)
         baselineCache = now to b

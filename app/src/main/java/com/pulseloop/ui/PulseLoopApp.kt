@@ -290,6 +290,8 @@ fun PulseLoopApp() {
             com.pulseloop.emotion.CalmCue.buzzer = { calmTouches.play(it) }
             com.pulseloop.emotion.CalmCue.isRingConnected = { calmTouches.isRingConnected }
             com.pulseloop.emotion.CalmCue.reconnect = { if (bleClient.hasLastKnownRing) bleClient.connectLastKnown() }
+            com.pulseloop.emotion.CalmCue.measureHr = { coordinator.measureHeartRateOnly() }
+            com.pulseloop.emotion.CalmCue.canMeasureHr = { coordinator.canMeasureHeartRate }
         }
 
         // ── Emotion app vs original PulseLoop UI ─────────────────────────

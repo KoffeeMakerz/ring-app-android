@@ -50,6 +50,7 @@ import com.pulseloop.emotion.CalmCue
 import com.pulseloop.emotion.Feeling
 import com.pulseloop.emotion.RingTouches
 import com.pulseloop.emotion.TouchPattern
+import kotlinx.coroutines.launch
 
 /** Calm cue when tense (beta, off by default): status, rules, sensitivity, try it, recent checks. */
 @Composable
@@ -103,6 +104,47 @@ fun CalmCueScreen(touches: RingTouches, onBack: () -> Unit, onTryBreath: () -> U
                 }
             }
             Card {
+                var refresh by remember { mutableStateOf(0) }
+                var measuring by remember { mutableStateOf(false) }
+                val scope = androidx.compose.runtime.rememberCoroutineScope()
+                val rows by produceState(initialValue = emptyList<Triple<String, String, Long?>>(), refresh) {
+                    value = CalmCue.latestReadings(context)
+                }
+                Text("What your ring is sending", color = EColors.text, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                rows.forEach { (name, value, at) ->
+                    Row(Modifier.padding(top = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Text(name, color = EColors.text, fontSize = 14.sp, modifier = Modifier.weight(1f))
+                        Text(value, color = EColors.text, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                        if (at != null) {
+                            Text(
+                                " · " + android.text.format.DateUtils.getRelativeTimeSpanString(at, System.currentTimeMillis(), android.text.format.DateUtils.MINUTE_IN_MILLIS),
+                                color = EColors.textSecondary, fontSize = 12.sp,
+                            )
+                        }
+                    }
+                }
+                val hrAt = rows.firstOrNull()?.third
+                if (rows.isNotEmpty() && (hrAt == null || System.currentTimeMillis() - hrAt > 6 * 3_600_000L)) {
+                    Text(
+                        "No recent heart-rate history from your ring. The calm cue still uses HRV and stress, and takes a quick heart-rate reading itself when you're still and the ring is connected.",
+                        color = EColors.textSecondary, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp),
+                    )
+                }
+                if (CalmCue.canMeasureHr()) {
+                    TextButton(
+                        enabled = !measuring,
+                        onClick = {
+                            measuring = true
+                            scope.launch {
+                                runCatching { CalmCue.measureHr?.invoke() }
+                                measuring = false
+                                refresh += 1
+                            }
+                        },
+                    ) { Text(if (measuring) "Measuring… keep your hand still" else "Measure heart rate now", color = EColors.accent) }
+                }
+            }
+            Card {
                 Row {
                     Text("Learning your normal", color = EColors.text, fontSize = 15.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
                     Text("${minOf(baseline.days, 7)} of 7 days", color = EColors.textSecondary, fontSize = 13.sp)
@@ -112,8 +154,11 @@ fun CalmCueScreen(touches: RingTouches, onBack: () -> Unit, onTryBreath: () -> U
                     modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp),
                 )
                 Text(
-                    if (baseline.ready) "Resting heart rate about ${baseline.restingHr?.toInt()} bpm${baseline.hrvMedian?.let { " · usual HRV ${it.toInt()} ms" } ?: ""}. Works from now; gets better over 7 days."
-                    else "Needs ${CalmCue.MIN_BASELINE_DAYS} days of heart readings from your ring before it can start.",
+                    if (baseline.ready) listOfNotNull(
+                        baseline.restingHr?.let { "Resting heart rate about ${it.toInt()} bpm" },
+                        baseline.hrvMedian?.let { "usual HRV ${it.toInt()} ms" },
+                    ).joinToString(" · ") + ". Works from now; gets better over 7 days."
+                    else "Needs ${CalmCue.MIN_BASELINE_DAYS} days of readings (heart rate, HRV or stress) from your ring before it can start.",
                     color = EColors.textSecondary, fontSize = 13.sp,
                 )
             }
