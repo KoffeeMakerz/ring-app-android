@@ -85,6 +85,7 @@ import kotlinx.coroutines.delay
 private val CalmBlue = Color(0xFF7FB2F0)
 private val CalmGround = Color(0xFF0B1220)
 private val CalmCard = Color(0xFF121C2E)
+private const val RING_TAP_EVERY_BREATHS = 3
 
 /** Meditate tab: sessions plus breathing settings. */
 @Composable
@@ -136,7 +137,7 @@ fun MeditateScreen(onStart: (MeditationKind) -> Unit) {
             Row(Modifier.fillMaxWidth().heightIn(min = 64.dp), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     Text("Ring guides my breath", color = EColors.text, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
-                    Text("A tap at each in-breath, so eyes can close", color = EColors.textSecondary, fontSize = 13.sp)
+                    Text("A gentle tap every third in-breath, so eyes can close. Never during coherence.", color = EColors.textSecondary, fontSize = 13.sp)
                 }
                 Switch(
                     checked = guides, onCheckedChange = { guides = it; BreathSettings.setRingGuides(context, it) },
@@ -160,7 +161,8 @@ fun MeditateScreen(onStart: (MeditationKind) -> Unit) {
 private fun fmt(v: Float): String = if (v == v.toInt().toFloat()) v.toInt().toString() else "%.1f".format(v)
 
 /**
- * Session player: phases, breath circle (4 in / 7 out by default), a ring tap at each in-breath,
+ * Session player: phases, breath circle (4 in / 7 out by default), a ring tap every third in-breath
+ * (none during coherence breathing),
  * and calm images changing every 20 s behind it.
  */
 @Composable
@@ -196,6 +198,7 @@ fun MeditationSessionScreen(
 
     LaunchedEffect(kind) {
         var breathT = 0f
+        var breathCount = 0
         var ticks = 0
         while (elapsed < kind.totalSeconds && !finished) {
             delay(250)
@@ -211,7 +214,12 @@ fun MeditationSessionScreen(
                     inhaleStarts.add(now)
                     inhaleStarts.removeAll { now - it > 90_000 }
                 }
-                if (inhale && kind.isBreathingAt(elapsed) && guides) touches.play(TouchBlock.TAP.pattern)
+                if (inhale && kind.isBreathingAt(elapsed)) {
+                    breathCount += 1
+                    // Frequent taps were too much: tap every third in-breath, never during coherence.
+                    val coherencePhase = kind.phases[kind.phaseIndexAt(elapsed)].first.lowercase().contains("coherence")
+                    if (guides && !coherencePhase && (breathCount - 1) % RING_TAP_EVERY_BREATHS == 0) touches.play(TouchBlock.TAP.pattern)
+                }
             }
             secondsLeft = kotlin.math.ceil(if (nowInhale) inS - pos else cycle - pos).toInt()
             ticks += 1

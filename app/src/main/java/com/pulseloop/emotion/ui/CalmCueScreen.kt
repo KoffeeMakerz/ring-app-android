@@ -194,7 +194,7 @@ fun CalmCueScreen(touches: RingTouches, onBack: () -> Unit, onTryBreath: () -> U
             ) {
                 Column(Modifier.weight(1f)) {
                     Text("Try the calm breath", color = EColors.text, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
-                    Text("1½ min · in for 4, out for 7 · ring taps each in-breath", color = EColors.textSecondary, fontSize = 13.sp)
+                    Text("1½ min · in for 4, out for 7 · a ring tap every few breaths", color = EColors.textSecondary, fontSize = 13.sp)
                 }
                 Icon(Icons.Filled.ChevronRight, contentDescription = null, tint = EColors.textMuted)
             }
