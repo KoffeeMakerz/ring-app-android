@@ -25,7 +25,11 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import com.pulseloop.emotion.CalmCue
+import com.pulseloop.emotion.EmotionIntents
 import com.pulseloop.emotion.EmotionStore
+import com.pulseloop.emotion.MeditationKind
+import androidx.compose.material.icons.filled.SelfImprovement
 import com.pulseloop.emotion.RingTouches
 import com.pulseloop.ring.RingBLEClient
 
@@ -34,6 +38,8 @@ sealed class EScreen {
     data object Tabs : EScreen()
     data class Builder(val experienceId: String?, val templateId: String?) : EScreen()
     data class Player(val experienceId: String) : EScreen()
+    data class Meditation(val kind: MeditationKind) : EScreen()
+    data object CalmCueSettings : EScreen()
 }
 
 /**
@@ -55,6 +61,15 @@ fun EmotionRoot(bleClient: RingBLEClient, onOpenOriginalUi: (route: String?) -> 
 
     // Photos added in a builder that was closed without saving.
     LaunchedEffect(Unit) { store.pruneImages() }
+
+    // A calm cue notification was tapped: open the calm breath.
+    val pendingOpen by EmotionIntents.pending.collectAsState()
+    LaunchedEffect(pendingOpen) {
+        if (pendingOpen == CalmCue.OPEN_CALM_BREATH) {
+            EmotionIntents.pending.value = null
+            screen = EScreen.Meditation(MeditationKind.CALM_BREATH)
+        }
+    }
 
     BackHandler(enabled = screen != EScreen.Tabs) { screen = EScreen.Tabs }
 
@@ -80,6 +95,12 @@ fun EmotionRoot(bleClient: RingBLEClient, onOpenOriginalUi: (route: String?) -> 
                 )
             }
         }
+        is EScreen.Meditation -> MeditationSessionScreen(kind = s.kind, touches = touches, onClose = { screen = EScreen.Tabs })
+        EScreen.CalmCueSettings -> CalmCueScreen(
+            touches = touches,
+            onBack = { screen = EScreen.Tabs },
+            onTryBreath = { screen = EScreen.Meditation(MeditationKind.CALM_BREATH) },
+        )
         EScreen.Tabs -> Scaffold(
             containerColor = EColors.ground,
             bottomBar = {
@@ -98,6 +119,11 @@ fun EmotionRoot(bleClient: RingBLEClient, onOpenOriginalUi: (route: String?) -> 
                     )
                     NavigationBarItem(
                         selected = tab == 1, onClick = { tab = 1 }, colors = colors,
+                        icon = { Icon(Icons.Filled.SelfImprovement, contentDescription = null) },
+                        label = { Text("Meditate") },
+                    )
+                    NavigationBarItem(
+                        selected = tab == 2, onClick = { tab = 2 }, colors = colors,
                         icon = { Icon(Icons.Filled.RadioButtonChecked, contentDescription = null) },
                         label = { Text("Ring") },
                     )
@@ -113,8 +139,13 @@ fun EmotionRoot(bleClient: RingBLEClient, onOpenOriginalUi: (route: String?) -> 
                         onEdit = { screen = EScreen.Builder(it, null) },
                         onNew = { templateId -> screen = EScreen.Builder(null, templateId) },
                     )
+                } else if (tab == 1) {
+                    MeditateScreen(onStart = { screen = EScreen.Meditation(it) })
                 } else {
-                    RingScreen(bleClient = bleClient, touches = touches, onOpenOriginalUi = onOpenOriginalUi)
+                    RingScreen(
+                        bleClient = bleClient, touches = touches, onOpenOriginalUi = onOpenOriginalUi,
+                        onOpenCalmCue = { screen = EScreen.CalmCueSettings },
+                    )
                 }
             }
         }

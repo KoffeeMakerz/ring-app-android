@@ -74,6 +74,8 @@ fun PulseLoopApp() {
                 context, db,
                 onDataPersisted = {
                     com.pulseloop.widgets.WidgetSnapshotPublisher.publishDebounced(context)
+                    // Calm cue: new ring data is the moment to check (coalesced to once a minute).
+                    com.pulseloop.emotion.CalmCue.evaluateLater(context, "ring data")
                 },
             )
         }
@@ -247,6 +249,7 @@ fun PulseLoopApp() {
                         todayVM.refreshCurrentDay()
                         activityVM.refreshCurrentDay()
                         sleepVM.refreshReferenceNight()
+                        com.pulseloop.emotion.CalmCue.evaluateLater(context, "app open")
                         if (isFirstStart) isFirstStart = false else bleClient.reconnectIfNeeded()
                     }
                     Lifecycle.Event.ON_STOP -> {
@@ -280,6 +283,15 @@ fun PulseLoopApp() {
             }
         }
 
+        // ── Calm cue: play its touch on the app's ring connection ─────────
+        val calmScope = rememberCoroutineScope()
+        val calmTouches = remember { com.pulseloop.emotion.RingTouches(context, bleClient, calmScope) }
+        LaunchedEffect(Unit) {
+            com.pulseloop.emotion.CalmCue.buzzer = { calmTouches.play(it) }
+            com.pulseloop.emotion.CalmCue.isRingConnected = { calmTouches.isRingConnected }
+            com.pulseloop.emotion.CalmCue.reconnect = { if (bleClient.hasLastKnownRing) bleClient.connectLastKnown() }
+        }
+
         // ── Emotion app vs original PulseLoop UI ─────────────────────────
         // The emotion app (com.pulseloop.emotion) is the default. Ring pairing and health stats
         // still live in the original screens; the emotion app's Ring tab switches here (optionally
@@ -291,6 +303,9 @@ fun PulseLoopApp() {
             legacyUI = on
             emotionPrefs.edit().putBoolean("legacy_ui", on).apply()
         }
+        // A calm cue notification opens the emotion app even from the original UI.
+        val emotionOpen by com.pulseloop.emotion.EmotionIntents.pending.collectAsState()
+        LaunchedEffect(emotionOpen) { if (emotionOpen != null && legacyUI) setLegacyUI(false) }
 
         // ── Navigation ───────────────────────────────────────────────────
         // Tab order + icons mirror iOS MainTab (AppTheme.swift): Today (circle.circle),

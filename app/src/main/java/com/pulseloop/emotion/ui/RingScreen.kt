@@ -37,7 +37,7 @@ import com.pulseloop.wearables.WearableModel
 
 /** Ring status, each feeling's touch to try, and the way to pairing and health stats. */
 @Composable
-fun RingScreen(bleClient: RingBLEClient, touches: RingTouches, onOpenOriginalUi: (route: String?) -> Unit) {
+fun RingScreen(bleClient: RingBLEClient, touches: RingTouches, onOpenOriginalUi: (route: String?) -> Unit, onOpenCalmCue: () -> Unit) {
     val state by bleClient.state.collectAsState()
     val connected = state.connectionState == RingConnectionState.CONNECTED
     val ringName = WearableModel.model(state.activeWearableModelID)?.displayName
@@ -95,6 +95,19 @@ fun RingScreen(bleClient: RingBLEClient, touches: RingTouches, onOpenOriginalUi:
                 }
                 Text("Feel", color = f.color, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
             }
+        }
+
+        SectionLabel("WELLBEING")
+        Row(
+            Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(EColors.card)
+                .clickable(onClick = onOpenCalmCue).padding(horizontal = 16.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(Modifier.weight(1f)) {
+                Text("Calm cue when tense", color = EColors.text, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                Text(if (com.pulseloop.emotion.CalmCue.isEnabled(androidx.compose.ui.platform.LocalContext.current)) "On" else "Off · beta", color = EColors.textSecondary, fontSize = 12.sp)
+            }
+            Text("›", color = EColors.textMuted, fontSize = 22.sp)
         }
 
         SectionLabel("MORE")

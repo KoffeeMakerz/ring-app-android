@@ -30,6 +30,11 @@ data class TouchPattern(
             }
             return out
         }
+
+    companion object {
+        /** Calm cue: three soft hums with lengthening gaps, like a breath slowing down. */
+        val CALM_CUE = TouchPattern("calm.cue", "Slow down", listOf(800, 1200, 800, 1800, 800))
+    }
 }
 
 /** Building blocks that feelings' touches are composed from. */
