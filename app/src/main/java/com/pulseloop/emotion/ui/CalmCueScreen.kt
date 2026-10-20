@@ -180,7 +180,7 @@ fun CalmCueScreen(touches: RingTouches, onBack: () -> Unit, onTryBreath: () -> U
                     Box(Modifier.size(10.dp).clip(CircleShape).background(Feeling.CALM.color))
                     Column(Modifier.weight(1f).padding(start = 12.dp)) {
                         Text("Slow down", color = EColors.text, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
-                        Text("Three soft hums, each gap longer", color = EColors.textSecondary, fontSize = 13.sp)
+                        Text("Five hums, each gap longer", color = EColors.textSecondary, fontSize = 13.sp)
                     }
                     Button(
                         onClick = { touches.play(TouchPattern.CALM_CUE) },

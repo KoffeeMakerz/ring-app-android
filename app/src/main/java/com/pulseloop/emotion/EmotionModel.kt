@@ -32,8 +32,8 @@ data class TouchPattern(
         }
 
     companion object {
-        /** Calm cue: three soft hums with lengthening gaps, like a breath slowing down. */
-        val CALM_CUE = TouchPattern("calm.cue", "Slow down", listOf(800, 1200, 800, 1800, 800))
+        /** Calm cue: five hums with each gap longer, like a breath slowing down. */
+        val CALM_CUE = TouchPattern("calm.cue", "Slow down", listOf(600, 700, 600, 1000, 600, 1400, 600, 1800, 600))
     }
 }
 
@@ -93,36 +93,52 @@ enum class Feeling(
 ) {
     GRATITUDE(
         "gratitude", "Gratitude", Color(0xFFF2B45A), Color(0xFF2A1E10),
-        listOf(TouchBlock.DOUBLE_TAP, TouchBlock.SHORT_REST, TouchBlock.TAP), "Two, pause, one",
+        listOf(TouchBlock.DOUBLE_TAP, TouchBlock.SHORT_REST, TouchBlock.TAP), "Two, two, then one",
         "It's real. Look around and thank everyone and everything that brought you here.",
     ),
     LOVE(
         "love", "Love", Color(0xFFF27A9B), Color(0xFF2E1420),
-        listOf(TouchBlock.HEARTBEAT, TouchBlock.SHORT_REST, TouchBlock.HEARTBEAT), "A heartbeat, twice",
+        listOf(TouchBlock.HEARTBEAT, TouchBlock.SHORT_REST, TouchBlock.HEARTBEAT), "Three heartbeats",
         "Feel the people you love here with you. Let the warmth fill your chest.",
     ),
     JOY(
         "joy", "Joy", Color(0xFFF5D76E), Color(0xFF2B2612),
-        listOf(TouchBlock.FLUTTER, TouchBlock.SHORT_REST, TouchBlock.FLUTTER), "Two quick flutters",
+        listOf(TouchBlock.FLUTTER, TouchBlock.SHORT_REST, TouchBlock.FLUTTER), "Three quick triplets",
         "It's happening. Let the joy rise and spill over.",
     ),
     BLISS(
         "bliss", "Bliss", Color(0xFFB892FF), Color(0xFF221A33),
-        listOf(TouchBlock.FLUTTER, TouchBlock.DOUBLE_TAP), "Five rising taps",
+        listOf(TouchBlock.FLUTTER, TouchBlock.DOUBLE_TAP), "Five taps, speeding up",
         "Let your whole body light up with it.",
     ),
     CALM(
         "calm", "Calm", Color(0xFF7FB2F0), Color(0xFF15233A),
-        listOf(TouchBlock.LONG_HUM, TouchBlock.LONG_REST, TouchBlock.LONG_HUM), "Two slow hums",
+        listOf(TouchBlock.LONG_HUM, TouchBlock.LONG_REST, TouchBlock.LONG_HUM), "Four slow hums",
         "Everything is taken care of. Breathe out and settle into it.",
     ),
     CONFIDENCE(
         "confidence", "Confidence", Color(0xFF6FD6A1), Color(0xFF14291F),
-        listOf(TouchBlock.TAP, TouchBlock.SHORT_REST, TouchBlock.DOUBLE_TAP), "One, then two",
+        listOf(TouchBlock.TAP, TouchBlock.SHORT_REST, TouchBlock.DOUBLE_TAP), "One, one, then three",
         "You made this happen. Stand tall in it.",
     );
 
-    val touch: TouchPattern get() = TouchBlock.compose(blocks, "feeling.$raw", "$label touch")
+    /**
+     * Alternating motor-on / off ms, starting with on (v2: stronger, easier to feel). Most rings
+     * only have a fixed "find device" buzz, so every motor-on segment becomes one buzz: each touch
+     * is 5–9 buzzes in clear groups, buzzes in a group ~0.6 s apart, 0.9–1.3 s between groups.
+     * Same values as iOS `Feeling.durationsMs`.
+     */
+    val durationsMs: List<Int>
+        get() = when (this) {
+            GRATITUDE -> listOf(350, 300, 350, 1200, 350, 300, 350, 1200, 500)
+            LOVE -> listOf(300, 300, 450, 1000, 300, 300, 450, 1000, 300, 300, 450)
+            JOY -> listOf(250, 350, 250, 350, 250, 900, 250, 350, 250, 350, 250, 900, 250, 350, 250, 350, 250)
+            BLISS -> listOf(300, 1300, 300, 1000, 300, 750, 300, 550, 700)
+            CALM -> listOf(700, 1300, 700, 1300, 700, 1300, 700)
+            CONFIDENCE -> listOf(450, 900, 450, 900, 300, 300, 300, 300, 600)
+        }
+
+    val touch: TouchPattern get() = TouchPattern("feeling.$raw", "$label touch", durationsMs)
 
     companion object {
         const val MAX_PER_EXPERIENCE = 3
