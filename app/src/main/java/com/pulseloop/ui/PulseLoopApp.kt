@@ -280,6 +280,18 @@ fun PulseLoopApp() {
             }
         }
 
+        // ── Emotion app vs original PulseLoop UI ─────────────────────────
+        // The emotion app (com.pulseloop.emotion) is the default. Ring pairing and health stats
+        // still live in the original screens; the emotion app's Ring tab switches here (optionally
+        // to a route) and an "Emotion app" button on the original UI switches back.
+        val emotionPrefs = remember { context.getSharedPreferences("emotion", android.content.Context.MODE_PRIVATE) }
+        var legacyUI by remember { mutableStateOf(emotionPrefs.getBoolean("legacy_ui", false)) }
+        var pendingLegacyRoute by remember { mutableStateOf<String?>(null) }
+        fun setLegacyUI(on: Boolean) {
+            legacyUI = on
+            emotionPrefs.edit().putBoolean("legacy_ui", on).apply()
+        }
+
         // ── Navigation ───────────────────────────────────────────────────
         // Tab order + icons mirror iOS MainTab (AppTheme.swift): Today (circle.circle),
         // Vitals (heart), Activity (waveform.path.ecg), Sleep (moon), Coach (sparkles).
@@ -288,7 +300,9 @@ fun PulseLoopApp() {
         // First-launch gate (iOS #48): show the onboarding flow until it's completed.
         // Existing installs that already have a completed profile or a paired ring are
         // marked complete silently so an app update never re-onboards them.
-        LaunchedEffect(Unit) {
+        LaunchedEffect(legacyUI) {
+            // Only the original UI has this nav graph; the emotion app has its own flow.
+            if (!legacyUI) return@LaunchedEffect
             if (!apiKeyStore.onboardingCompleted) {
                 val profileDone = db.userProfileDao().get()?.onboardingCompleted == true
                 val hasRing = db.deviceDao().current() != null || bleClient.hasLastKnownRing
@@ -358,6 +372,17 @@ fun PulseLoopApp() {
             noiseFactor = 0.02f,
         )
 
+        if (!legacyUI) {
+            com.pulseloop.emotion.ui.EmotionRoot(bleClient = bleClient) { route ->
+                pendingLegacyRoute = route
+                setLegacyUI(true)
+            }
+        } else Box(Modifier.fillMaxSize()) {
+        LaunchedEffect(pendingLegacyRoute) {
+            val route = pendingLegacyRoute ?: return@LaunchedEffect
+            pendingLegacyRoute = null
+            navController.navigate(route) { launchSingleTop = true }
+        }
         Scaffold(
             containerColor = com.pulseloop.ui.theme.PulseColors.background,
             topBar = {
@@ -704,6 +729,14 @@ fun PulseLoopApp() {
                     )
                 }
             }
+        }
+
+        // Way back to the emotion app.
+        FilledTonalButton(
+            onClick = { setLegacyUI(false) },
+            contentPadding = PaddingValues(horizontal = 14.dp, vertical = 0.dp),
+            modifier = Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(top = 2.dp).height(32.dp),
+        ) { Text("Emotion app") }
         }
 
         pendingUpdate?.let { info ->
