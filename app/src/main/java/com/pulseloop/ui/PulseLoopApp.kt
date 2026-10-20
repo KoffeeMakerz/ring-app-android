@@ -390,7 +390,7 @@ fun PulseLoopApp() {
         )
 
         if (!legacyUI) {
-            com.pulseloop.emotion.ui.EmotionRoot(bleClient = bleClient) { route ->
+            com.pulseloop.emotion.ui.EmotionRoot(bleClient = bleClient, coordinator = coordinator) { route ->
                 pendingLegacyRoute = route
                 setLegacyUI(true)
             }

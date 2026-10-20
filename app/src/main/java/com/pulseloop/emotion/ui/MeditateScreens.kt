@@ -1,5 +1,23 @@
 package com.pulseloop.emotion.ui
 
+import android.os.SystemClock
+import androidx.compose.foundation.Canvas
+import androidx.compose.material.icons.filled.MonitorHeart
+import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.text.style.TextAlign
+import com.pulseloop.emotion.CoherenceLevel
+import com.pulseloop.emotion.LiveHeart
+import com.pulseloop.ring.RingBLEClient
+import com.pulseloop.service.RingSyncCoordinator
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -75,6 +93,7 @@ fun MeditateScreen(onStart: (MeditationKind) -> Unit) {
     var inS by remember { mutableFloatStateOf(BreathSettings.inSeconds(context)) }
     var outS by remember { mutableFloatStateOf(BreathSettings.outSeconds(context)) }
     var guides by remember { mutableStateOf(BreathSettings.ringGuides(context)) }
+    var heartChart by remember { mutableStateOf(BreathSettings.heartChart(context)) }
     var paceMenu by remember { mutableStateOf(false) }
 
     Column(
@@ -124,6 +143,16 @@ fun MeditateScreen(onStart: (MeditationKind) -> Unit) {
                     colors = SwitchDefaults.colors(checkedTrackColor = EColors.accent),
                 )
             }
+            Row(Modifier.fillMaxWidth().heightIn(min = 64.dp), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text("Heart rhythm chart", color = EColors.text, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+                    Text("Optional · HRV and coherence from the ring's heart rate", color = EColors.textSecondary, fontSize = 13.sp)
+                }
+                Switch(
+                    checked = heartChart, onCheckedChange = { heartChart = it; BreathSettings.setHeartChart(context, it) },
+                    colors = SwitchDefaults.colors(checkedTrackColor = EColors.accent),
+                )
+            }
         }
     }
 }
@@ -135,8 +164,22 @@ private fun fmt(v: Float): String = if (v == v.toInt().toFloat()) v.toInt().toSt
  * and calm images changing every 20 s behind it.
  */
 @Composable
-fun MeditationSessionScreen(kind: MeditationKind, touches: RingTouches, onClose: () -> Unit) {
+fun MeditationSessionScreen(
+    kind: MeditationKind,
+    touches: RingTouches,
+    bleClient: RingBLEClient,
+    coordinator: RingSyncCoordinator,
+    onClose: () -> Unit,
+) {
     val context = LocalContext.current
+    val heartScope = rememberCoroutineScope()
+    val heart = remember { LiveHeart(bleClient, coordinator, heartScope) }
+    var showHeart by remember { mutableStateOf(BreathSettings.heartChart(context)) }
+    val inhaleStarts = remember { mutableStateListOf<Long>() }
+    DisposableEffect(showHeart) {
+        if (showHeart) heart.start() else heart.stop()
+        onDispose { heart.stop() }
+    }
     val inS = if (kind == MeditationKind.CALM_BREATH) 4f else BreathSettings.inSeconds(context)
     val outS = if (kind == MeditationKind.CALM_BREATH) 7f else BreathSettings.outSeconds(context)
     val guides = remember { BreathSettings.ringGuides(context) }
@@ -163,6 +206,11 @@ fun MeditationSessionScreen(kind: MeditationKind, touches: RingTouches, onClose:
             val nowInhale = pos < inS
             if (nowInhale != inhale) {
                 inhale = nowInhale
+                if (inhale) {
+                    val now = SystemClock.elapsedRealtime()
+                    inhaleStarts.add(now)
+                    inhaleStarts.removeAll { now - it > 90_000 }
+                }
                 if (inhale && kind.isBreathingAt(elapsed) && guides) touches.play(TouchBlock.TAP.pattern)
             }
             secondsLeft = kotlin.math.ceil(if (nowInhale) inS - pos else cycle - pos).toInt()
@@ -206,25 +254,41 @@ fun MeditationSessionScreen(kind: MeditationKind, touches: RingTouches, onClose:
                 )
                 Spacer(Modifier.weight(1f))
                 Box(Modifier.size(260.dp), contentAlignment = Alignment.Center) {
-                    Box(Modifier.size(240.dp).clip(CircleShape).border(1.dp, Color(0xFF22324D), CircleShape))
-                    Box(
-                        Modifier.size(190.dp).scale(circleScale).clip(CircleShape).background(Color(0xFF1B3355).copy(alpha = 0.6f))
-                            .border(1.dp, Color.White.copy(alpha = 0.18f), CircleShape),
-                    )
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    // Near-white so it stays clear over any background image.
+                    Box(Modifier.size(240.dp).clip(CircleShape).border(1.5.dp, Color.White.copy(alpha = 0.55f), CircleShape))
+                    Box(Modifier.size(190.dp).scale(circleScale).clip(CircleShape).background(Color(0xFFEEF4FF).copy(alpha = 0.9f)))
+                    Column(
+                        Modifier.size(width = 160.dp, height = 120.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center,
+                    ) {
                         Text(
                             if (breathing) (if (inhale) "Breathe in" else "Breathe out") else if (phaseName == "Reflect") "Reflect" else "Let go",
-                            color = EColors.text, fontSize = 28.sp, fontWeight = FontWeight.Bold,
+                            color = CalmGround, fontSize = 26.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center,
                         )
                         Text(
                             if (breathing) "$secondsLeft" else if (phaseName == "Reflect") "What do you feel now?" else "Soften from head to toe",
-                            color = EColors.textSecondary, fontSize = 15.sp,
+                            color = CalmGround, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center,
                         )
                     }
                 }
                 Spacer(Modifier.weight(1f))
+                if (showHeart) {
+                    HeartPanel(heart, inhaleStarts, inS, inS + outS, breathing)
+                    Spacer(Modifier.height(16.dp))
+                }
                 Row(horizontalArrangement = Arrangement.spacedBy(28.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Box(Modifier.size(52.dp))
+                    Box(
+                        Modifier.size(52.dp).clip(CircleShape).background(if (showHeart) CalmBlue.copy(alpha = 0.3f) else CalmCard)
+                            .clickable { showHeart = !showHeart; BreathSettings.setHeartChart(context, showHeart) },
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            if (showHeart) Icons.Filled.MonitorHeart else Icons.Filled.VisibilityOff,
+                            contentDescription = if (showHeart) "Hide heart rhythm chart" else "Show heart rhythm chart",
+                            tint = EColors.text,
+                        )
+                    }
                     Box(
                         Modifier.size(72.dp).clip(CircleShape).background(CalmBlue).clickable { running = !running },
                         contentAlignment = Alignment.Center,
@@ -267,5 +331,84 @@ fun MeditationSessionScreen(kind: MeditationKind, touches: RingTouches, onClose:
                 ) { Text("Done", fontWeight = FontWeight.Bold, fontSize = 16.sp) }
             }
         }
+    }
+}
+
+/** Heart rhythm (HRV) chart with in-breaths shaded, plus coherence during paced breathing. */
+@Composable
+private fun HeartPanel(heart: LiveHeart, inhaleStarts: List<Long>, inhaleSeconds: Float, breathPeriod: Float, breathing: Boolean) {
+    heart.tick // read so this re-composes each second
+    val status = heart.status
+    val points = heart.recent(60)
+    val message = when {
+        status == LiveHeart.Status.NO_RING -> "Connect your ring to see your heart rhythm. The breathing guide works without it."
+        status == LiveHeart.Status.STARTING || status == LiveHeart.Status.IDLE -> "Starting… keep your hand still. The first reading takes 10–20 seconds."
+        status == LiveHeart.Status.STALLED && points.isEmpty() -> "No pulse from the ring yet. Make sure it's snug, sensor on the palm side."
+        points.size < 2 -> "Waiting for heart readings…"
+        else -> null
+    }
+    val level = heart.coherence(breathPeriod)
+    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp)).background(CalmCard.copy(alpha = 0.92f)).padding(16.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("Heart rhythm · HRV", color = EColors.text, fontSize = 15.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+            Text(
+                if (status == LiveHeart.Status.STALLED && points.isNotEmpty()) "Signal lost · hold still" else heart.current?.let { "$it bpm" } ?: "",
+                color = if (status == LiveHeart.Status.STALLED) EColors.accent else EColors.textSecondary, fontSize = 12.sp,
+            )
+        }
+        Box(Modifier.fillMaxWidth().height(84.dp).padding(top = 8.dp), contentAlignment = Alignment.Center) {
+            val now = SystemClock.elapsedRealtime()
+            Canvas(Modifier.fillMaxSize()) {
+                val window = 60_000f
+                fun x(t: Long) = size.width * (1f - (now - t) / window)
+                inhaleStarts.forEach { start ->
+                    val x0 = x(start).coerceAtLeast(0f)
+                    val x1 = x(start + (inhaleSeconds * 1000).toLong()).coerceAtMost(size.width)
+                    if (x1 > x0) drawRect(CalmBlue.copy(alpha = 0.14f), topLeft = Offset(x0, 0f), size = Size(x1 - x0, size.height))
+                }
+                listOf(0.25f, 0.5f, 0.75f).forEach { f ->
+                    drawLine(Color.White.copy(alpha = 0.06f), Offset(0f, size.height * f), Offset(size.width, size.height * f), strokeWidth = 1f)
+                }
+                if (points.size > 1) {
+                    val lo = points.minOf { it.second }.toFloat()
+                    val hi = points.maxOf { it.second }.toFloat()
+                    val mid = (lo + hi) / 2
+                    val span = maxOf(8f, hi - lo) * 1.25f
+                    fun y(v: Int) = size.height * (0.5f - (v - mid) / span)
+                    val path = Path()
+                    points.forEachIndexed { i, (t, bpm) -> if (i == 0) path.moveTo(x(t), y(bpm)) else path.lineTo(x(t), y(bpm)) }
+                    drawPath(path, Color(0xFFEEF4FF), style = Stroke(width = 2.5.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round))
+                    val (lt, lb) = points.last()
+                    drawCircle(EColors.accent, radius = 4.dp.toPx(), center = Offset(x(lt), y(lb)))
+                }
+            }
+            if (message != null) {
+                Text(message, color = EColors.textSecondary, fontSize = 13.sp, textAlign = TextAlign.Center, modifier = Modifier.padding(horizontal = 12.dp))
+            }
+        }
+        if (breathing) {
+            Row(Modifier.fillMaxWidth().padding(top = 10.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                CoherenceLevel.entries.forEach { l ->
+                    val color = if (level != l) Color(0xFF22324D) else when (l) {
+                        CoherenceLevel.HIGH -> EColors.accent
+                        CoherenceLevel.MEDIUM -> CalmBlue
+                        CoherenceLevel.LOW -> Color(0xFF3A4560)
+                    }
+                    Box(Modifier.weight(1f).height(8.dp).clip(RoundedCornerShape(4.dp)).background(color))
+                }
+            }
+            Row(Modifier.fillMaxWidth().padding(top = 6.dp)) {
+                Text("Low", color = EColors.textSecondary, fontSize = 12.sp)
+                Text(
+                    level?.let { "${it.label} coherence" } ?: "Measuring… ${minOf(100, heart.secondsOfData * 5)}%",
+                    color = EColors.text, fontSize = 12.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center, modifier = Modifier.weight(1f),
+                )
+                Text("High", color = EColors.textSecondary, fontSize = 12.sp)
+            }
+        }
+        Text(
+            "Heart rate rising on the in-breath and falling on the out-breath is coherence. An estimate from your ring's pulse, not a medical reading.",
+            color = EColors.textMuted, fontSize = 11.sp, modifier = Modifier.padding(top = 8.dp),
+        )
     }
 }

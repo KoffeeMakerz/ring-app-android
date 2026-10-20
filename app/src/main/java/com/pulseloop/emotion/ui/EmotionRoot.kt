@@ -50,7 +50,11 @@ sealed class EScreen {
  * @param onOpenOriginalUi switch to the original UI, optionally opening a route there.
  */
 @Composable
-fun EmotionRoot(bleClient: RingBLEClient, onOpenOriginalUi: (route: String?) -> Unit) {
+fun EmotionRoot(
+    bleClient: RingBLEClient,
+    coordinator: com.pulseloop.service.RingSyncCoordinator,
+    onOpenOriginalUi: (route: String?) -> Unit,
+) {
     val context = LocalContext.current
     val store = remember { EmotionStore.get(context) }
     val scope = rememberCoroutineScope()
@@ -95,7 +99,10 @@ fun EmotionRoot(bleClient: RingBLEClient, onOpenOriginalUi: (route: String?) -> 
                 )
             }
         }
-        is EScreen.Meditation -> MeditationSessionScreen(kind = s.kind, touches = touches, onClose = { screen = EScreen.Tabs })
+        is EScreen.Meditation -> MeditationSessionScreen(
+            kind = s.kind, touches = touches, bleClient = bleClient, coordinator = coordinator,
+            onClose = { screen = EScreen.Tabs },
+        )
         EScreen.CalmCueSettings -> CalmCueScreen(
             touches = touches,
             onBack = { screen = EScreen.Tabs },

@@ -42,6 +42,9 @@ object BreathSettings {
     fun outSeconds(context: Context): Float = prefs(context).getFloat("breath_out", 7f)
     fun setPace(context: Context, inS: Float, outS: Float) = prefs(context).edit().putFloat("breath_in", inS).putFloat("breath_out", outS).apply()
     fun ringGuides(context: Context): Boolean = prefs(context).getBoolean("ring_guides_breath", true)
+    /** Heart rhythm (HRV) chart and coherence during sessions; optional, on by default. */
+    fun heartChart(context: Context): Boolean = prefs(context).getBoolean("heart_chart", true)
+    fun setHeartChart(context: Context, on: Boolean) = prefs(context).edit().putBoolean("heart_chart", on).apply()
     fun setRingGuides(context: Context, on: Boolean) = prefs(context).edit().putBoolean("ring_guides_breath", on).apply()
 
     val paces = listOf(Triple(4f, 7f, "4 in · 7 out (calming)"), Triple(5f, 5f, "5 in · 5 out (6/min)"), Triple(5.5f, 5.5f, "5.5 in · 5.5 out (5.5/min)"))
