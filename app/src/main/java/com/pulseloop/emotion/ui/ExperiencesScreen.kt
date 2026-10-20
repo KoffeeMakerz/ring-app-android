@@ -69,7 +69,7 @@ fun ExperiencesScreen(
         }
         item {
             Text(
-                if (experiences.isEmpty()) "START WITH A VISION" else "NEW VISION",
+                if (experiences.isEmpty()) "START WITH A VISION" else "NEW EXPERIENCE",
                 color = EColors.textMuted, fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp,
                 modifier = Modifier.padding(top = 12.dp),
             )
