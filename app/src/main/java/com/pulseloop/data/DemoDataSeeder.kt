@@ -113,7 +113,7 @@ object DemoDataSeeder {
 
             // Coach conversation
             db.coachConversationDao().upsert(CoachConversationEntity(
-                title = "Welcome to PulseLoop",
+                title = "Welcome to Kinora",
             ))
         }
     }

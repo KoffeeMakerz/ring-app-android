@@ -167,7 +167,7 @@ fun SettingsScreen(
                 add(SettingsRowItem(Icons.Filled.Sync, PulseColors.success, "Health Connect") {
                     navigate("settings/health-connect")
                 })
-                add(SettingsRowItem(Icons.Filled.Info, PulseColors.textMuted, "About PulseLoop") {
+                add(SettingsRowItem(Icons.Filled.Info, PulseColors.textMuted, "About Kinora") {
                     navigate("settings/about")
                 })
             },

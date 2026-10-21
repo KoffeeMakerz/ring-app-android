@@ -115,7 +115,7 @@ fun RingScreen(bleClient: RingBLEClient, touches: RingTouches, onOpenOriginalUi:
             Text("Manage ring", color = EColors.text)
         }
         OutlinedButton(onClick = { onOpenOriginalUi(null) }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
-            Text("Health stats (original PulseLoop screens)", color = EColors.text)
+            Text("Health stats (original health screens)", color = EColors.text)
         }
         Text(
             "The original screens have an \"Emotion app\" button at the top to come back here.",

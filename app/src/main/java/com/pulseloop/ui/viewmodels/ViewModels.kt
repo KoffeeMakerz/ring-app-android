@@ -864,7 +864,7 @@ class CoachViewModel(
     )
 
     private val greeting = ChatMessage("assistant",
-        "Hi! I'm your PulseLoop coach. I can answer questions about your sleep, heart rate, activity, and recovery. What would you like to know?")
+        "Hi! I'm your Kinora coach. I can answer questions about your sleep, heart rate, activity, and recovery. What would you like to know?")
 
     private val _state = MutableStateFlow(CoachState(messages = listOf(greeting)))
     val state: StateFlow<CoachState> = _state.asStateFlow()

@@ -52,7 +52,7 @@ fun AppHeader(
     ) {
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                "PULSELOOP",
+                "KINORA",
                 fontSize = 10.sp,
                 fontWeight = FontWeight.Medium,
                 letterSpacing = 1.2.sp,

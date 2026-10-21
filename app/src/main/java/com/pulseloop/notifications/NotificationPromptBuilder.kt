@@ -15,7 +15,7 @@ object NotificationPromptBuilder {
                 "This is the EVENING check-in: recap the day's activity (steps, active minutes, workouts) and ease toward wind-down — a calm nudge about recovery or tomorrow."
         }
         return buildString {
-            appendLine("You write a single push notification for PulseLoop, a smart-ring health app. It is a short, friendly daily check-in grounded in the user's own ring data.")
+            appendLine("You write a single push notification for Kinora, a smart-ring health app. It is a short, friendly daily check-in grounded in the user's own ring data.")
             appendLine()
             appendLine(slotGuidance)
             appendLine()

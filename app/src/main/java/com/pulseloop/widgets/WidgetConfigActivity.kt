@@ -122,8 +122,8 @@ private fun ConfigScreen(
             color = PulseColors.textPrimary,
         )
         Text(
-            if (isDual) "Pick the left and right PulseLoop metrics."
-            else "Pick which PulseLoop metric this widget shows.",
+            if (isDual) "Pick the left and right Kinora metrics."
+            else "Pick which Kinora metric this widget shows.",
             fontSize = 14.sp,
             color = PulseColors.textSecondary,
         )

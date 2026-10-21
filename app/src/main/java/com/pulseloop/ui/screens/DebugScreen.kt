@@ -228,7 +228,7 @@ fun DebugScreen(
                     Column(Modifier.padding(16.dp)) {
                         Text("App Info", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                         Spacer(Modifier.height(8.dp))
-                        Text("PulseLoop v1.0.0 (Android)", style = MaterialTheme.typography.bodyMedium)
+                        Text("Kinora v1.0.0 (Android)", style = MaterialTheme.typography.bodyMedium)
                         Text("Port from iOS · Open Source", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
