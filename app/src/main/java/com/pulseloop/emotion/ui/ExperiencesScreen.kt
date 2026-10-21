@@ -83,6 +83,21 @@ fun ExperiencesScreen(
             }
         }
         if (segment == 1) {
+            item(key = "practice") {
+                Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(EColors.card).padding(14.dp)) {
+                    Text("Practice tracks", color = EColors.text, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                    Text("1 minute, made for practising one feeling", color = EColors.textSecondary, fontSize = 13.sp)
+                    MusicTrack.practice.forEach { t ->
+                        Row(Modifier.padding(top = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+                            SongPlayButton(t)
+                            Column(Modifier.padding(start = 12.dp)) {
+                                Text(t.title, color = EColors.text, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                                Text("${t.durationLabel} · ${t.cueMarkersS.size} ring cues", color = EColors.textSecondary, fontSize = 12.sp)
+                            }
+                        }
+                    }
+                }
+            }
             items(MusicTrack.songGroups, key = { "song-" + it.first }) { (_, versions) ->
                 val first = versions.first()
                 Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(EColors.card).padding(14.dp)) {

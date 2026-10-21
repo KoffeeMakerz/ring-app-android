@@ -194,7 +194,8 @@ data class MusicTrack(
     val songKey: String get() = id.substringBefore("-")
     /** "Home" for "Home (chill)". */
     val songName: String get() = title.substringBefore(" (")
-    val version: String get() = if (id.endsWith("upbeat")) "Upbeat" else "Chill"
+    val isPractice: Boolean get() = id.startsWith("practice-")
+    val version: String get() = if (isPractice) "Practice" else if (id.endsWith("upbeat")) "Upbeat" else "Chill"
     val about: String get() = SONG_ABOUT[songKey] ?: theme.label
 
     companion object {
@@ -231,7 +232,23 @@ data class MusicTrack(
          */
         val catalog: List<MusicTrack> get() = songs
 
-        fun byId(id: String?): MusicTrack? = catalog.firstOrNull { it.id == id }
+        /**
+         * 1-minute instrumental practice tracks, one per feeling (same list as iOS
+         * `MusicTrack.practice`). Cue markers = the loudest moments. Not in the song lists.
+         */
+        val practice: List<MusicTrack> = listOf(
+            MusicTrack("practice-gratitude", "Quiet Gratitude", MusicTheme.GRATITUDE, 60, listOf(24, 36, 48), rawRes = "practice_gratitude"),
+            MusicTrack("practice-love", "Warm Against Time", MusicTheme.LOVE, 60, listOf(14, 32, 48), rawRes = "practice_love"),
+            MusicTrack("practice-joy", "Joy in Motion", MusicTheme.JOY, 60, listOf(18, 34, 46), rawRes = "practice_joy"),
+            MusicTrack("practice-bliss", "Radiant Drift", MusicTheme.BUSINESS, 60, listOf(16, 26, 38), rawRes = "practice_bliss"),
+            MusicTrack("practice-calm", "Still Water Breath", MusicTheme.HEALTH, 60, listOf(16, 26, 42), rawRes = "practice_calm"),
+            MusicTrack("practice-confidence", "Unshakable Rise", MusicTheme.ABUNDANCE, 60, listOf(18, 38, 48), rawRes = "practice_confidence"),
+        )
+
+        fun byId(id: String?): MusicTrack? = (catalog + practice).firstOrNull { it.id == id }
+
+        /** The 1-minute track a feeling's practice session starts with. */
+        fun practiceFor(feeling: Feeling): MusicTrack = byId("practice-" + feeling.raw) ?: default(feeling)
 
         fun default(feeling: Feeling): MusicTrack {
             val id = when (feeling) {
