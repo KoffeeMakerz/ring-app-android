@@ -176,7 +176,10 @@ enum class MusicTheme(val raw: String, val label: String, val color: Color, val 
     GRATITUDE("gratitude", "Gratitude", Color(0xFFF2B45A), Color(0xFF3A2A16)),
 }
 
-/** A curated track. Until real songs are bundled the player runs on a silent clock. */
+/**
+ * A curated track. Songs made with ElevenLabs are bundled in res/raw (`rawRes` = file name without
+ * extension); tracks without one run on a silent clock.
+ */
 data class MusicTrack(
     val id: String,
     val title: String,
@@ -184,34 +187,62 @@ data class MusicTrack(
     val durationS: Int,
     /** Cue moments (each chorus), authored with the song. */
     val cueMarkersS: List<Int>,
+    val rawRes: String? = null,
 ) {
     val durationLabel: String get() = "%d:%02d".format(durationS / 60, durationS % 60)
+    /** "home" for "home-chill": the song both versions belong to. */
+    val songKey: String get() = id.substringBefore("-")
+    /** "Home" for "Home (chill)". */
+    val songName: String get() = title.substringBefore(" (")
+    val version: String get() = if (id.endsWith("upbeat")) "Upbeat" else "Chill"
+    val about: String get() = SONG_ABOUT[songKey] ?: theme.label
 
     companion object {
-        val catalog: List<MusicTrack> = MusicTheme.entries.flatMap { theme ->
-            (1..3).map { i ->
-                val len = 210 + i * 25
-                MusicTrack(
-                    id = "${theme.raw}-$i",
-                    title = "[${theme.label} track $i]",
-                    theme = theme,
-                    durationS = len,
-                    cueMarkersS = (38 until len - 10 step 42).toList(),
-                )
-            }
-        }
+        val SONG_ABOUT = mapOf(
+            "home" to "Your dream home", "partner" to "Your dream partner", "together" to "Love with a partner · duet",
+            "abundance" to "Abundance flowing to you", "freedom" to "Freedom", "car" to "Your dream car",
+        )
+
+        /** Songs in catalog order, each with its versions (songs aren't grouped by emotion). */
+        val songGroups: List<Pair<String, List<MusicTrack>>>
+            get() = catalog.groupBy { it.songKey }.toList()
+
+        /** Real songs (same list as iOS `MusicTrack.songs`). */
+        val songs: List<MusicTrack> = listOf(
+            // Cue markers = the choruses, estimated from each song's own timing. Order matters:
+            // the first song of a theme is that theme's default.
+            MusicTrack("home-chill", "Home (chill)", MusicTheme.GRATITUDE, 180, listOf(53, 63, 127, 137), rawRes = "home_chill"),
+            MusicTrack("home-upbeat", "Home (upbeat)", MusicTheme.GRATITUDE, 180, listOf(44, 54, 122, 132), rawRes = "home_upbeat"),
+            MusicTrack("partner-chill", "You're Here (chill)", MusicTheme.LOVE, 120, listOf(38, 48, 88, 98), rawRes = "partner_chill"),
+            MusicTrack("partner-upbeat", "You're Here (upbeat)", MusicTheme.LOVE, 120, listOf(36, 46, 88, 98), rawRes = "partner_upbeat"),
+            MusicTrack("together-chill", "Together (chill)", MusicTheme.LOVE, 120, listOf(34, 44, 84, 94), rawRes = "together_chill"),
+            MusicTrack("together-upbeat", "Together (upbeat)", MusicTheme.LOVE, 110, listOf(34, 44, 82, 92), rawRes = "together_upbeat"),
+            MusicTrack("abundance-chill", "Flowing (chill)", MusicTheme.ABUNDANCE, 120, listOf(38, 48, 88, 98), rawRes = "abundance_chill"),
+            MusicTrack("abundance-upbeat", "Flowing (upbeat)", MusicTheme.ABUNDANCE, 120, listOf(38, 48, 88, 98), rawRes = "abundance_upbeat"),
+            MusicTrack("freedom-chill", "I'm Free (chill)", MusicTheme.JOY, 120, listOf(38, 48, 92, 102), rawRes = "freedom_chill"),
+            MusicTrack("freedom-upbeat", "I'm Free (upbeat)", MusicTheme.JOY, 120, listOf(38, 48, 88, 98), rawRes = "freedom_upbeat"),
+            MusicTrack("car-chill", "Driving (chill)", MusicTheme.JOY, 120, listOf(38, 48, 88, 98), rawRes = "car_chill"),
+            MusicTrack("car-upbeat", "Driving (upbeat)", MusicTheme.JOY, 120, listOf(38, 48, 88, 98), rawRes = "car_upbeat"),
+        )
+
+        /**
+         * Only real songs now (the placeholder tracks are gone). Experiences saved with a
+         * placeholder track fall back to their feeling's default song.
+         */
+        val catalog: List<MusicTrack> get() = songs
 
         fun byId(id: String?): MusicTrack? = catalog.firstOrNull { it.id == id }
 
         fun default(feeling: Feeling): MusicTrack {
-            val theme = when (feeling) {
-                Feeling.GRATITUDE -> MusicTheme.GRATITUDE
-                Feeling.LOVE -> MusicTheme.LOVE
-                Feeling.JOY, Feeling.BLISS -> MusicTheme.JOY
-                Feeling.CALM -> MusicTheme.HEALTH
-                Feeling.CONFIDENCE -> MusicTheme.BUSINESS
+            val id = when (feeling) {
+                Feeling.GRATITUDE -> "home-chill"
+                Feeling.LOVE -> "partner-chill"
+                Feeling.JOY -> "freedom-upbeat"
+                Feeling.BLISS -> "car-upbeat"
+                Feeling.CALM -> "abundance-chill"
+                Feeling.CONFIDENCE -> "abundance-upbeat"
             }
-            return catalog.first { it.theme == theme }
+            return byId(id) ?: songs.first()
         }
     }
 }
@@ -226,16 +257,18 @@ data class VisionTemplate(
     val tile: Color,
     /** Built-in image set the slideshow starts with. */
     val starterImageSet: String,
+    /** The song this vision starts with. */
+    val trackId: String = "",
 ) {
-    val track: MusicTrack get() = MusicTrack.catalog.firstOrNull { it.theme == theme } ?: MusicTrack.default(feelings[0])
+    val track: MusicTrack get() = MusicTrack.byId(trackId) ?: MusicTrack.default(feelings[0])
 
     companion object {
         val all: List<VisionTemplate> = listOf(
-            VisionTemplate("home", "My dream home", listOf("The keys are in my hand", "Morning light fills our kitchen", "A garden where the people I love gather"), listOf(Feeling.JOY, Feeling.GRATITUDE), MusicTheme.GRATITUDE, Color(0xFF4A3418), "home"),
-            VisionTemplate("money", "Financial freedom", listOf("The money is in my account", "I give generously and easily", "I choose how I spend my days"), listOf(Feeling.JOY, Feeling.CONFIDENCE, Feeling.GRATITUDE), MusicTheme.ABUNDANCE, Color(0xFF1E3A2C), "abundance"),
-            VisionTemplate("love", "A loving relationship", listOf("We laugh together every day", "I feel completely seen and safe", "We build our life side by side"), listOf(Feeling.LOVE, Feeling.GRATITUDE), MusicTheme.LOVE, Color(0xFF3F1C28), "together"),
-            VisionTemplate("business", "My business thriving", listOf("Clients come to me easily", "My team loves the work we do", "We grow every month"), listOf(Feeling.CONFIDENCE, Feeling.JOY), MusicTheme.BUSINESS, Color(0xFF1C2B40), "growth"),
-            VisionTemplate("health", "Vibrant health", listOf("I wake up full of energy", "My body feels strong and light", "I move with ease every day"), listOf(Feeling.CALM, Feeling.GRATITUDE), MusicTheme.HEALTH, Color(0xFF2D2245), "shores"),
+            VisionTemplate("home", "My dream home", listOf("The keys are in my hand", "Morning light fills our kitchen", "A garden where the people I love gather"), listOf(Feeling.JOY, Feeling.GRATITUDE), MusicTheme.GRATITUDE, Color(0xFF4A3418), "home", "home-chill"),
+            VisionTemplate("money", "Financial freedom", listOf("The money is in my account", "I give generously and easily", "I choose how I spend my days"), listOf(Feeling.JOY, Feeling.CONFIDENCE, Feeling.GRATITUDE), MusicTheme.ABUNDANCE, Color(0xFF1E3A2C), "abundance", "abundance-upbeat"),
+            VisionTemplate("love", "A loving relationship", listOf("We laugh together every day", "I feel completely seen and safe", "We build our life side by side"), listOf(Feeling.LOVE, Feeling.GRATITUDE), MusicTheme.LOVE, Color(0xFF3F1C28), "together", "together-chill"),
+            VisionTemplate("business", "My business thriving", listOf("Clients come to me easily", "My team loves the work we do", "We grow every month"), listOf(Feeling.CONFIDENCE, Feeling.JOY), MusicTheme.BUSINESS, Color(0xFF1C2B40), "growth", "car-upbeat"),
+            VisionTemplate("health", "Vibrant health", listOf("I wake up full of energy", "My body feels strong and light", "I move with ease every day"), listOf(Feeling.CALM, Feeling.GRATITUDE), MusicTheme.HEALTH, Color(0xFF2D2245), "shores", "freedom-chill"),
         )
 
         fun byId(id: String?): VisionTemplate? = all.firstOrNull { it.id == id }

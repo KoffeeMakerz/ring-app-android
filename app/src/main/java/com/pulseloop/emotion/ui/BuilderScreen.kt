@@ -253,25 +253,30 @@ fun BuilderScreen(
 
     if (showTracks) {
         AlertDialog(
-            onDismissRequest = { showTracks = false },
+            onDismissRequest = { SongPreview.stop(); showTracks = false },
             containerColor = EColors.card,
             title = { Text("Music", color = EColors.text) },
             text = {
                 Column(Modifier.verticalScroll(rememberScrollState())) {
-                    MusicTrack.catalog.forEach { t ->
-                        Row(
-                            Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
-                                .clickable { track = t; showTracks = false }.padding(vertical = 10.dp, horizontal = 6.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Box(Modifier.size(10.dp).clip(CircleShape).background(t.theme.color))
-                            Text(t.title, color = if (t.id == track.id) EColors.accent else EColors.text, modifier = Modifier.weight(1f).padding(start = 10.dp))
-                            Text(t.durationLabel, color = EColors.textMuted, fontSize = 13.sp)
+                    MusicTrack.songGroups.forEach { (_, versions) ->
+                        val first = versions.first()
+                        Text(first.songName, color = EColors.text, fontSize = 15.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 10.dp))
+                        Text(first.about, color = EColors.textSecondary, fontSize = 12.sp)
+                        versions.forEach { t ->
+                            Row(
+                                Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
+                                    .clickable { SongPreview.stop(); track = t; showTracks = false }.padding(vertical = 6.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                SongPlayButton(t)
+                                Text(t.version, color = if (t.id == track.id) EColors.accent else EColors.text, modifier = Modifier.weight(1f).padding(start = 10.dp))
+                                Text(t.durationLabel, color = EColors.textMuted, fontSize = 13.sp)
+                            }
                         }
                     }
                 }
             },
-            confirmButton = { TextButton(onClick = { showTracks = false }) { Text("Close", color = EColors.accent) } },
+            confirmButton = { TextButton(onClick = { SongPreview.stop(); showTracks = false }) { Text("Close", color = EColors.accent) } },
         )
     }
 

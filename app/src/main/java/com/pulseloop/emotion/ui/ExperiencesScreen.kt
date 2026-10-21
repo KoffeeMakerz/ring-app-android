@@ -28,6 +28,12 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.material.icons.filled.MusicNote
+import com.pulseloop.emotion.MusicTrack
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -52,6 +58,8 @@ fun ExperiencesScreen(
     onNew: (templateId: String?) -> Unit,
 ) {
     val experiences by store.experiences.collectAsState()
+    var segment by rememberSaveable { mutableIntStateOf(0) }
+    DisposableEffect(Unit) { onDispose { SongPreview.stop() } }
     LazyColumn(
         Modifier.fillMaxSize().background(EColors.ground),
         contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 56.dp, bottom = 24.dp),
@@ -63,6 +71,48 @@ fun ExperiencesScreen(
                 "Feel your vision as if it's already real. Your ring marks each feeling.",
                 color = EColors.textSecondary, fontSize = 14.sp, modifier = Modifier.padding(top = 4.dp, bottom = 4.dp),
             )
+            Row(Modifier.fillMaxWidth().padding(top = 8.dp).clip(RoundedCornerShape(11.dp)).background(EColors.card).padding(3.dp)) {
+                listOf("My experiences", "Songs").forEachIndexed { i, label ->
+                    val on = segment == i
+                    Box(
+                        Modifier.weight(1f).clip(RoundedCornerShape(9.dp)).background(if (on) EColors.cardRaised else EColors.card)
+                            .clickable { segment = i; if (i == 0) SongPreview.stop() }.padding(vertical = 9.dp),
+                        contentAlignment = Alignment.Center,
+                    ) { Text(label, color = if (on) EColors.text else EColors.textSecondary, fontSize = 14.sp, fontWeight = FontWeight.SemiBold) }
+                }
+            }
+        }
+        if (segment == 1) {
+            items(MusicTrack.songGroups, key = { "song-" + it.first }) { (_, versions) ->
+                val first = versions.first()
+                Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(EColors.card).padding(14.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(Modifier.size(48.dp).clip(RoundedCornerShape(12.dp)).background(first.theme.art), contentAlignment = Alignment.Center) {
+                            Icon(Icons.Filled.MusicNote, contentDescription = null, tint = first.theme.color)
+                        }
+                        Column(Modifier.padding(start = 12.dp)) {
+                            Text(first.songName, color = EColors.text, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                            Text(first.about, color = EColors.textSecondary, fontSize = 13.sp)
+                        }
+                    }
+                    versions.forEach { t ->
+                        Row(Modifier.padding(top = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+                            SongPlayButton(t)
+                            Column(Modifier.padding(start = 12.dp)) {
+                                Text(t.version, color = EColors.text, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                                Text("${t.durationLabel} · ${t.cueMarkersS.size} ring cues", color = EColors.textSecondary, fontSize = 12.sp)
+                            }
+                        }
+                    }
+                }
+            }
+            item {
+                Text(
+                    "Make a song for your own vision · My music, coming later",
+                    color = EColors.textSecondary, fontSize = 13.sp, modifier = Modifier.padding(top = 4.dp),
+                )
+            }
+            return@LazyColumn
         }
         items(experiences, key = { it.id }) { e ->
             ExperienceCard(e, onPlay = { onPlay(e.id) }, onEdit = { onEdit(e.id) }, onFeel = { touches.play(e.touchSequence) })

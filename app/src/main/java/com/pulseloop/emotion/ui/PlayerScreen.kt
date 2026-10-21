@@ -60,6 +60,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
@@ -90,7 +91,8 @@ fun PlayerScreen(
     onClose: () -> Unit,
 ) {
     val scope = rememberCoroutineScope()
-    val playback = remember(experience.id) { ExperiencePlayback(experience.track, experience.feelings, touches, scope) }
+    val context = LocalContext.current
+    val playback = remember(experience.id) { ExperiencePlayback(experience.track, experience.feelings, touches, scope, context) }
     val slides = experience.slides
     var immersive by remember { mutableStateOf(false) }
     var showVision by remember { mutableStateOf(false) }

@@ -1,5 +1,7 @@
 package com.pulseloop.emotion
 
+import android.content.Context
+import android.media.MediaPlayer
 import android.os.SystemClock
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableDoubleStateOf
@@ -18,14 +20,15 @@ data class ExperiencePart(val index: Int, val feeling: Feeling, val start: Doubl
 /**
  * Plays an experience: music clock + slideshow, split into one part per feeling of its arc.
  * At each cue marker the ring plays the touch of the part the cue falls in. Cues are driven from
- * the playback position so they never drift. Port of iOS `ExperiencePlayback`; until songs are
- * bundled it runs on a silent clock.
+ * the playback position so they never drift. Port of iOS `ExperiencePlayback`. Tracks with a
+ * bundled song (`MusicTrack.rawRes`, in res/raw) play it; the rest run on a silent clock.
  */
 class ExperiencePlayback(
     val track: MusicTrack,
     feelings: List<Feeling>,
     private val touches: RingTouches,
     private val scope: CoroutineScope,
+    context: Context? = null,
 ) {
     val feelings: List<Feeling> = feelings.ifEmpty { listOf(Feeling.GRATITUDE) }
 
@@ -44,7 +47,16 @@ class ExperiencePlayback(
     private var cueJob: Job? = null
     private val firedCues = mutableSetOf<Int>()
 
-    val duration: Double get() = track.durationS.toDouble()
+    /** The bundled song, if this track has one. */
+    private var player: MediaPlayer? = context?.let { ctx ->
+        track.rawRes?.let { name ->
+            val id = ctx.resources.getIdentifier(name, "raw", ctx.packageName)
+            if (id != 0) runCatching { MediaPlayer.create(ctx, id) }.getOrNull() else null
+        }
+    }
+
+    val duration: Double
+        get() = player?.duration?.takeIf { it > 0 }?.let { it / 1000.0 } ?: track.durationS.toDouble()
     val progress: Double get() = if (duration > 0) position / duration else 0.0
     val slideIndex: Int get() = if (slideCount > 0) (position / slideSeconds).toInt() % slideCount else 0
 
@@ -68,14 +80,20 @@ class ExperiencePlayback(
         if (isPlaying) return
         if (position >= duration) seekTo(0.0)
         isPlaying = true
+        player?.let {
+            it.seekTo((position * 1000).toInt())
+            it.start()
+        }
         val startWall = SystemClock.elapsedRealtime()
         val startPos = position
         tick = scope.launch {
             while (isActive) {
                 delay(200)
-                position = startPos + (SystemClock.elapsedRealtime() - startWall) / 1000.0
+                position = player?.let { it.currentPosition / 1000.0 }
+                    ?: (startPos + (SystemClock.elapsedRealtime() - startWall) / 1000.0)
                 checkCues()
-                if (position >= duration) {
+                // A bundled song that has stopped on its own has reached its end.
+                if (position >= duration || player?.isPlaying == false) {
                     position = duration
                     pause()
                     return@launch
@@ -87,6 +105,7 @@ class ExperiencePlayback(
     fun pause() {
         tick?.cancel()
         tick = null
+        player?.takeIf { it.isPlaying }?.pause()
         isPlaying = false
     }
 
@@ -111,6 +130,8 @@ class ExperiencePlayback(
     fun stop() {
         pause()
         touches.stop()
+        player?.release()
+        player = null
     }
 
     /** Play the current part's touch now. */
