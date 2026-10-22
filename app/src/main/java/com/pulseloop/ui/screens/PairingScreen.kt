@@ -180,6 +180,7 @@ fun PairingScreen(
                         ?: state.activeDeviceType?.displayName
                         ?: selectedModel.displayName,
                     checkmarkFired = didFireConnected,
+                    advertisedName = bleClient.connectedDeviceName,
                     onContinue = onSkip,
                     onChangeRing = {
                         isSwitching = true
@@ -564,6 +565,7 @@ private fun ConnectedCard(
     model: WearableModel,
     deviceName: String,
     checkmarkFired: Boolean,
+    advertisedName: String?,
     onContinue: (() -> Unit)?,
     onChangeRing: () -> Unit,
 ) {
@@ -619,6 +621,9 @@ private fun ConnectedCard(
                 fontWeight = FontWeight.SemiBold,
                 color = PulseColors.textPrimary,
             )
+        }
+        if (advertisedName != null && advertisedName != deviceName) {
+            Text(advertisedName, fontSize = 12.sp, color = PulseColors.textMuted)
         }
         if (onContinue != null) {
             PrimaryButton("Continue", icon = Icons.Filled.Check, onClick = onContinue)

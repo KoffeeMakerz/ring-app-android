@@ -23,6 +23,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -41,7 +42,10 @@ fun RingScreen(bleClient: RingBLEClient, touches: RingTouches, onOpenOriginalUi:
     val state by bleClient.state.collectAsState()
     val connected = state.connectionState == RingConnectionState.CONNECTED
     val ringName = WearableModel.model(state.activeWearableModelID)?.displayName
-        ?: state.activeDeviceType?.displayName ?: "Your ring"
+        ?: state.activeDeviceType?.displayName ?: bleClient.connectedDeviceName ?: "Your ring"
+    // The ring's own Bluetooth name, small under the model name when it adds something.
+    val deviceName = remember(state.connectionState, state.activeWearableModelID) { bleClient.connectedDeviceName }
+        ?.takeIf { it != ringName }
     val status = when (state.connectionState) {
         RingConnectionState.CONNECTED -> "Connected" + (state.batteryPercent?.let { " · $it% battery" } ?: "")
         RingConnectionState.CONNECTING, RingConnectionState.RECONNECTING -> "Connecting…"
@@ -62,6 +66,7 @@ fun RingScreen(bleClient: RingBLEClient, touches: RingTouches, onOpenOriginalUi:
             Box(Modifier.size(10.dp).clip(CircleShape).background(if (connected) EColors.success else EColors.textMuted))
             Column(Modifier.weight(1f).padding(start = 12.dp)) {
                 Text(ringName, color = EColors.text, fontSize = 17.sp, fontWeight = FontWeight.Bold)
+                deviceName?.let { Text(it, color = EColors.textMuted, fontSize = 12.sp) }
                 Text(status, color = EColors.textSecondary, fontSize = 13.sp)
             }
             if (!connected && bleClient.hasLastKnownRing) {
