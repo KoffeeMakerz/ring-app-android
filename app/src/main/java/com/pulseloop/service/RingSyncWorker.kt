@@ -120,6 +120,19 @@ class RingSyncWorker(
                     if (isAppForeground()) return@withTimeout Result.success()
                 }
 
+                // Calm cue: check the fresh data while this worker still holds the ring, and play
+                // the touch on this connection if it fires (then give it time to finish).
+                kotlinx.coroutines.coroutineScope {
+                    val touches = com.pulseloop.emotion.RingTouches(applicationContext, bleClient, this)
+                    var played = false
+                    com.pulseloop.emotion.CalmCue.evaluate(
+                        applicationContext, "background sync",
+                        buzz = { touches.play(it); played = true },
+                        ringConnected = { touches.isRingConnected },
+                    )
+                    if (played) delay(7_000L)
+                }
+
                 // Health Connect export trigger (Phase 1): the background sync has streamed its
                 // data — run the (debounced) export pass. The foreground path triggers the same
                 // worker via the SyncProgress("done") event, so both sync owners cover it.

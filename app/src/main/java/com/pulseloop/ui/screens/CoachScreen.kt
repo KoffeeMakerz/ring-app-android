@@ -155,7 +155,7 @@ fun CoachHeader(onNewChat: () -> Unit, onOpenUsage: (() -> Unit)? = null) {
             )
         }
         Column(Modifier.weight(1f)) {
-            Text("PulseLoop Coach", fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = PulseColors.textPrimary)
+            Text("Kinnora Coach", fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = PulseColors.textPrimary)
             Text("Using your latest ring sync", fontSize = 12.sp, color = PulseColors.textMuted)
         }
         if (onOpenUsage != null) {

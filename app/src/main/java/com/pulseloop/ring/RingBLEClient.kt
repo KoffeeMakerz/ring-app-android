@@ -133,6 +133,17 @@ class RingBLEClient(
     private var activeSyncEngine: RingSyncEngine? = null
     // Advertised name of the connection being established, for exact-model resolution + events.
     private var activeAdvertisedName: String? = null
+
+    /**
+     * The name the connected ring itself advertises (e.g. "R09_5A1C"): what it's called in
+     * Bluetooth settings and in the ring's own app. null when not connected.
+     */
+    val connectedDeviceName: String?
+        get() {
+            if (_state.value.connectionState != RingConnectionState.CONNECTED) return null
+            val name = activeAdvertisedName ?: try { bluetoothGatt?.device?.name } catch (_: SecurityException) { null }
+            return name?.takeIf { it.isNotBlank() }
+        }
     /** Scanner's family classification for the in-flight connection, before any carousel override.
      *  Read post-connect by the jring re-route, which must only fire against the ambiguous
      *  generic-"SMART_RING" guess. See [beginConnect]. */

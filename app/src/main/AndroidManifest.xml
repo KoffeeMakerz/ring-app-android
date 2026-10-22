@@ -37,6 +37,8 @@
 
     <!-- Self-update: fetch the GitHub release manifest/APK and install it -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Emotion app: the phone stands in for the ring touch when no ring is connected. -->
+    <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
     <!-- Phase 8: Health Connect export (write-only). Exactly the Phase 1–4 data types from

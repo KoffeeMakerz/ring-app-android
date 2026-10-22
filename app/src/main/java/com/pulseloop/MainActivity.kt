@@ -62,6 +62,7 @@ class MainActivity : ComponentActivity() {
 
         // Handle Strava redirect on cold start (app launched from browser callback).
         handleStravaRedirect(intent)
+        handleEmotionIntent(intent)
     }
 
     override fun onResume() {
@@ -82,6 +83,15 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         handleStravaRedirect(intent)
+        handleEmotionIntent(intent)
+    }
+
+    /** Calm cue notification tap: ask the emotion app to open the calm breath. */
+    private fun handleEmotionIntent(intent: Intent) {
+        intent.getStringExtra(com.pulseloop.emotion.CalmCue.EXTRA_OPEN)?.let {
+            com.pulseloop.emotion.EmotionIntents.pending.value = it
+            intent.removeExtra(com.pulseloop.emotion.CalmCue.EXTRA_OPEN)
+        }
     }
 
     /**
