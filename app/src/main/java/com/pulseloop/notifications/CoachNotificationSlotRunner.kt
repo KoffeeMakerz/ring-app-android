@@ -258,7 +258,7 @@ class CoachNotificationSlotRunner(
 
     companion object {
         /** The generic scripted check-in (pre-extraction worker fallback text). */
-        const val GENERIC_TITLE = "Kinora Coach"
+        const val GENERIC_TITLE = "Kinnora Coach"
         const val GENERIC_BODY = "Good morning! Sync your ring and check your vitals to start the day."
 
         /**

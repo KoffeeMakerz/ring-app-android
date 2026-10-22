@@ -21,7 +21,7 @@ class HealthConnectRationaleActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val title = TextView(this).apply {
-            text = "How Kinora uses Health Connect"
+            text = "How Kinnora uses Health Connect"
             textSize = 18f
             setPadding(0, 0, 0, dp(12))
         }

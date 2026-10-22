@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Launcher label. Overridden to "Kinora Debug" in the debug source set so a debug
+    <!-- Launcher label. Overridden to "Kinnora Debug" in the debug source set so a debug
          build (com.pulseloop.debug) is visually distinct from a release install on the same phone. -->
-    <string name="app_name">Kinora</string>
+    <string name="app_name">Kinnora</string>
 
     <!-- Home-screen widgets (iOS #44). -->
     <string name="widget_activity_label">Daily Activity</string>

@@ -140,7 +140,7 @@ object DiagnosticsExporter {
         return Intent(Intent.ACTION_SEND).apply {
             type = "application/json"
             putExtra(Intent.EXTRA_STREAM, uri)
-            putExtra(Intent.EXTRA_SUBJECT, "Kinora Diagnostics")
+            putExtra(Intent.EXTRA_SUBJECT, "Kinnora Diagnostics")
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
     }

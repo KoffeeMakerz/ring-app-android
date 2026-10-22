@@ -522,7 +522,7 @@ object SleepInsights {
 
     fun noDataState(range: SleepRangeKey): SleepNoDataState = when (range) {
         SleepRangeKey.DAY -> SleepNoDataState("Last Sleep", "No sleep captured last night",
-            "Wear your ring overnight so Kinora can track your next night.")
+            "Wear your ring overnight so Kinnora can track your next night.")
         SleepRangeKey.WEEK -> SleepNoDataState("Weekly Sleep", "Not enough weekly data",
             "Wear your ring overnight for a few nights to build a weekly view.")
         SleepRangeKey.MONTH -> SleepNoDataState("Monthly Sleep", "Not enough monthly data",

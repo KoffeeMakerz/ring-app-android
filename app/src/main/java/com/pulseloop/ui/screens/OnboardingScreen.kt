@@ -312,7 +312,7 @@ private fun WelcomeStep(getStarted: () -> Unit, exploreWithoutRing: () -> Unit) 
                 .clip(RoundedCornerShape(22.dp)),
         )
         StepHeader(
-            title = "Set up Kinora",
+            title = "Set up Kinnora",
             subtitle = "Your health, on your terms — no subscription, no cloud.",
         )
 
@@ -490,7 +490,7 @@ private fun BaselineStep(finish: () -> Unit) {
 
     StepScaffold(
         footer = {
-            PrimaryButton("Start using Kinora", icon = Icons.Filled.ArrowForward, onClick = finish)
+            PrimaryButton("Start using Kinnora", icon = Icons.Filled.ArrowForward, onClick = finish)
         },
     ) {
         SuccessMedallion(scale = medallionScale)
@@ -515,7 +515,7 @@ private fun BaselineStep(finish: () -> Unit) {
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
-                    "Kinora learns your baseline over time",
+                    "Kinnora learns your baseline over time",
                     fontSize = 20.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = PulseColors.textPrimary,

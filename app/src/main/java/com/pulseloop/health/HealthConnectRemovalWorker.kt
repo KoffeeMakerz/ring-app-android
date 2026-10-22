@@ -44,18 +44,18 @@ class HealthConnectRemovalWorker(
             val result = HealthConnectRemoval.removeAll(applicationContext, client, store)
             val message = when {
                 result.failedTypes > 0 ->
-                    "Removed Kinora data, but ${result.failedTypes} type(s) could not be deleted — try again."
+                    "Removed Kinnora data, but ${result.failedTypes} type(s) could not be deleted — try again."
                 result.deletedTypes == 0 ->
-                    "Nothing to remove: Kinora has no write permissions left, so it can't delete " +
+                    "Nothing to remove: Kinnora has no write permissions left, so it can't delete " +
                         "what it wrote. Delete it in the Health Connect app, or re-grant and try again."
-                else -> "Removed Kinora data from Health Connect."
+                else -> "Removed Kinnora data from Health Connect."
             }
             store.update { it.copy(removalStatus = message) }
             Log.i(TAG, "removal done: $message")
             Result.success()
         } catch (e: Exception) {
             Log.w(TAG, "removal failed", e)
-            store.update { it.copy(removalStatus = "Could not remove Kinora data. Try again.") }
+            store.update { it.copy(removalStatus = "Could not remove Kinnora data. Try again.") }
             Result.success()
         }
     }
