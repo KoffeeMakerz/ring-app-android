@@ -76,6 +76,10 @@ fun PairingScreen(
     var isLooking by remember { mutableStateOf(false) }
     var didFireConnected by remember { mutableStateOf(false) }
     var showDiagnostics by remember { mutableStateOf(false) }
+    // "Connect a different ring": the current ring was dropped to scan for others. If the user
+    // leaves without connecting a new one, the old ring is reconnected on the way out.
+    var isSwitching by remember { mutableStateOf(false) }
+    val switchScope = rememberCoroutineScope()
 
     // The adapter flag isn't part of BLEState until a scan attempt, so poll it directly.
     var btReady by remember { mutableStateOf(bleClient.isBluetoothEnabled) }
@@ -135,7 +139,12 @@ fun PairingScreen(
 
     // Reset so a re-appear doesn't show a frozen scan.
     DisposableEffect(Unit) {
-        onDispose { bleClient.stopScanning() }
+        onDispose {
+            bleClient.stopScanning()
+            if (isSwitching && bleClient.state.value.connectionState != RingConnectionState.CONNECTED) {
+                bleClient.connectLastKnown()
+            }
+        }
     }
 
     // Keep the scan card on-screen. Embedded in the onboarding wizard, the step
@@ -172,6 +181,18 @@ fun PairingScreen(
                         ?: selectedModel.displayName,
                     checkmarkFired = didFireConnected,
                     onContinue = onSkip,
+                    onChangeRing = {
+                        isSwitching = true
+                        didFireConnected = false
+                        bleClient.disconnect()
+                        switchScope.launch {
+                            // Let the GATT close (≈500 ms) so the old ring advertises again and the
+                            // stack is free before the scan starts.
+                            delay(800)
+                            isLooking = true
+                            bleClient.startScanning()
+                        }
+                    },
                 )
             } else {
                 BrandTabs(brands, selectedBrand) { brand ->
@@ -544,6 +565,7 @@ private fun ConnectedCard(
     deviceName: String,
     checkmarkFired: Boolean,
     onContinue: (() -> Unit)?,
+    onChangeRing: () -> Unit,
 ) {
     // Success ring halo: spring scale 0.7 → 1.0 + fade-in, triggered once on appear.
     var appeared by remember { mutableStateOf(false) }
@@ -601,6 +623,13 @@ private fun ConnectedCard(
         if (onContinue != null) {
             PrimaryButton("Continue", icon = Icons.Filled.Check, onClick = onContinue)
         }
+        SecondaryButton("Connect a different ring", icon = Icons.Filled.BluetoothSearching, onClick = onChangeRing)
+        Text(
+            "Your current ring disconnects while we look for others nearby. If you don't pick a new one, it reconnects when you leave.",
+            fontSize = 12.sp,
+            color = PulseColors.textMuted,
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+        )
     }
 }
 

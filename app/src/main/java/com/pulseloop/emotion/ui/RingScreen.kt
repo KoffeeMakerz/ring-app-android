@@ -68,6 +68,11 @@ fun RingScreen(bleClient: RingBLEClient, touches: RingTouches, onOpenOriginalUi:
                 TextButton(onClick = { bleClient.connectLastKnown() }) { Text("Connect", color = EColors.accent) }
             }
         }
+        if (bleClient.hasLastKnownRing) {
+            TextButton(onClick = { onOpenOriginalUi("pairing") }, modifier = Modifier.fillMaxWidth()) {
+                Text("Change ring", color = EColors.accent, fontWeight = FontWeight.SemiBold)
+            }
+        }
         if (!bleClient.hasLastKnownRing) {
             Button(
                 onClick = { onOpenOriginalUi("pairing") },
