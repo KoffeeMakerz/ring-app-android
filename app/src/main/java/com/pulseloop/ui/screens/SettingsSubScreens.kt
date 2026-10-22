@@ -249,7 +249,7 @@ fun CoachSettingsScreen(onBack: () -> Unit) {
                 if (checkInPermissionDenied) {
                     Spacer(Modifier.height(4.dp))
                     Text(
-                        "Notifications are off for PulseLoop. Turn them on in Android Settings to get check-ins.",
+                        "Notifications are off for Kinnora. Turn them on in Android Settings to get check-ins.",
                         style = MaterialTheme.typography.bodySmall,
                         color = PulseColors.danger,
                     )
@@ -909,7 +909,7 @@ fun CheckInsSettingsScreen(onBack: () -> Unit) {
 
                 if (notifPermissionDenied) {
                     Text(
-                        "Notifications are disabled for PulseLoop in Android Settings.",
+                        "Notifications are disabled for Kinnora in Android Settings.",
                         style = MaterialTheme.typography.bodySmall,
                         color = PulseColors.danger,
                     )
@@ -964,7 +964,7 @@ fun CheckInsSettingsScreen(onBack: () -> Unit) {
                             scope.launch {
                                 CoachNotifications.showNow(
                                     context,
-                                    "PulseLoop Coach",
+                                    "Kinnora Coach",
                                     "This is a test check-in notification.",
                                 )
                             }
@@ -998,7 +998,7 @@ fun CheckInsSettingsScreen(onBack: () -> Unit) {
                 }
                 if (batteryPermDenied) {
                     Text(
-                        "Notifications are disabled for PulseLoop in Android Settings.",
+                        "Notifications are disabled for Kinnora in Android Settings.",
                         style = MaterialTheme.typography.bodySmall,
                         color = PulseColors.danger,
                     )
@@ -1129,7 +1129,7 @@ fun PhysiologySettingsScreen(onBack: () -> Unit) {
     SettingsSubScreen(title = "Physiology", onBack = onBack) {
         Text(
             "Optional refinements to how your vitals are interpreted. Leave anything unset and " +
-                "PulseLoop uses sensible defaults.",
+                "Kinnora uses sensible defaults.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -2127,7 +2127,7 @@ fun PrivacyDataSettingsScreen(
                                             putExtra(Intent.EXTRA_STREAM, uri)
                                             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                                         }
-                                        context.startActivity(Intent.createChooser(shareIntent, "Export PulseLoop Data"))
+                                        context.startActivity(Intent.createChooser(shareIntent, "Export Kinnora Data"))
                                     }
                                 } catch (_: Exception) {
                                     statusMessage = "Export failed"
@@ -2496,7 +2496,7 @@ fun AboutSettingsScreen(onOpenDebug: () -> Unit, onBack: () -> Unit) {
                 Text("Version", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    "PulseLoop v${com.pulseloop.BuildConfig.VERSION_NAME} (${com.pulseloop.BuildConfig.VERSION_CODE})",
+                    "Kinnora v${com.pulseloop.BuildConfig.VERSION_NAME} (${com.pulseloop.BuildConfig.VERSION_CODE})",
                     style = MaterialTheme.typography.bodyMedium,
                 )
             }
@@ -2504,7 +2504,7 @@ fun AboutSettingsScreen(onOpenDebug: () -> Unit, onBack: () -> Unit) {
 
         Card(Modifier.fillMaxWidth()) {
             Column(Modifier.padding(16.dp)) {
-                Text("PulseLoop", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                Text("Kinnora", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                 Spacer(Modifier.height(4.dp))
                 Text(
                     "An LLM-native health app that turns a cheap Bluetooth smart ring into a real, " +
@@ -2770,7 +2770,7 @@ fun StravaSettingsScreen(onBack: () -> Unit) {
                             val intent = Intent(Intent.ACTION_VIEW, android.net.Uri.parse(authUrl))
                             try {
                                 context.startActivity(intent)
-                                statusMessage = "Authorize in your browser — you'll return to PulseLoop automatically."
+                                statusMessage = "Authorize in your browser — you'll return to Kinnora automatically."
                             } catch (_: Exception) {
                                 statusMessage = "Could not open browser"
                             }
@@ -2941,7 +2941,7 @@ fun HealthConnectSettingsScreen(onBack: () -> Unit) {
                 Text("Health Connect", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    "Export ring data to Health Connect so other apps and dashboards can show it. Write-only: PulseLoop never reads data back.",
+                    "Export ring data to Health Connect so other apps and dashboards can show it. Write-only: Kinnora never reads data back.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -2975,7 +2975,7 @@ fun HealthConnectSettingsScreen(onBack: () -> Unit) {
                     HealthConnectAvailability.AVAILABLE -> {
                         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                             Column(Modifier.weight(1f)) {
-                                Text("Export PulseLoop data", style = MaterialTheme.typography.bodyLarge)
+                                Text("Export Kinnora data", style = MaterialTheme.typography.bodyLarge)
                                 Text(
                                     if (prefs.isConnected) "Connected" else "Not connected",
                                     style = MaterialTheme.typography.bodySmall,
@@ -3005,7 +3005,7 @@ fun HealthConnectSettingsScreen(onBack: () -> Unit) {
                         ) { Text("Open Health Connect") }
                         if (!prefs.isConnected) {
                             Text(
-                                "Manage or re-grant permissions, and review or delete PulseLoop's data, in the Health Connect app.",
+                                "Manage or re-grant permissions, and review or delete Kinnora's data, in the Health Connect app.",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
@@ -3116,7 +3116,7 @@ fun HealthConnectSettingsScreen(onBack: () -> Unit) {
                         "Last sync ${DeviceHeroStatus.relativeShort(syncedAt, System.currentTimeMillis())} — " +
                             (prefs.lastSyncSummary ?: "unknown")
                     } else {
-                        "No export has run yet. With the master switch on and a backfill choice made, PulseLoop exports automatically."
+                        "No export has run yet. With the master switch on and a backfill choice made, Kinnora exports automatically."
                     },
                     modifier = Modifier.padding(16.dp),
                     style = MaterialTheme.typography.bodyMedium,
@@ -3131,14 +3131,14 @@ fun HealthConnectSettingsScreen(onBack: () -> Unit) {
                     Text("Remove exported data", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                     Spacer(Modifier.height(4.dp))
                     Text(
-                        "Delete every record PulseLoop wrote to Health Connect and reset the export to start fresh. Your ring data in PulseLoop is untouched.",
+                        "Delete every record Kinnora wrote to Health Connect and reset the export to start fresh. Your ring data in Kinnora is untouched.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                     if (!prefs.isConnected) {
                         Spacer(Modifier.height(4.dp))
                         Text(
-                            "Deleting needs write permission, and PulseLoop has none right now — re-grant above, or delete the data in the Health Connect app.",
+                            "Deleting needs write permission, and Kinnora has none right now — re-grant above, or delete the data in the Health Connect app.",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.error,
                         )
@@ -3150,7 +3150,7 @@ fun HealthConnectSettingsScreen(onBack: () -> Unit) {
                         enabled = !removing,
                         colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
                         modifier = Modifier.fillMaxWidth(),
-                    ) { Text(if (removing) "Removing…" else "Remove PulseLoop data") }
+                    ) { Text(if (removing) "Removing…" else "Remove Kinnora data") }
                 }
             }
         }
@@ -3223,7 +3223,7 @@ fun HealthConnectSettingsScreen(onBack: () -> Unit) {
         AlertDialog(
             onDismissRequest = { showRevokeResetDialog = false; store.update { it.copy(revocationOfferDismissed = true) } },
             title = { Text("Health Connect permissions revoked") },
-            text = { Text("PulseLoop no longer has any Health Connect permissions. Reset the export so a later re-grant re-exports your history?") },
+            text = { Text("Kinnora no longer has any Health Connect permissions. Reset the export so a later re-grant re-exports your history?") },
             confirmButton = {
                 TextButton(onClick = {
                     store.clearWatermarks()
@@ -3243,8 +3243,8 @@ fun HealthConnectSettingsScreen(onBack: () -> Unit) {
     if (showRemoveDialog) {
         AlertDialog(
             onDismissRequest = { showRemoveDialog = false },
-            title = { Text("Remove PulseLoop data?") },
-            text = { Text("This deletes every record PulseLoop wrote to Health Connect and resets the export. It cannot be undone, and your ring data in PulseLoop is not affected.") },
+            title = { Text("Remove Kinnora data?") },
+            text = { Text("This deletes every record Kinnora wrote to Health Connect and resets the export. It cannot be undone, and your ring data in Kinnora is not affected.") },
             confirmButton = {
                 TextButton(onClick = {
                     showRemoveDialog = false

@@ -107,7 +107,7 @@ class WidgetTileRenderer(private val density: Float) {
         if (payload == null || rolledOver) {
             drawEmptyMessage(
                 canvas, rect,
-                if (rolledOver) "No data yet today" else "Open PulseLoop to sync",
+                if (rolledOver) "No data yet today" else "Open Kinnora to sync",
                 PulseColors.steps.toArgb(),
             )
         } else {
@@ -161,7 +161,7 @@ class WidgetTileRenderer(private val density: Float) {
                 if (payload == null) {
                     drawEmptyMessage(
                         canvas, content,
-                        if (snapshot == null) "Open PulseLoop to sync" else "No data",
+                        if (snapshot == null) "Open Kinnora to sync" else "No data",
                         accent,
                     )
                 } else {
@@ -254,7 +254,7 @@ class WidgetTileRenderer(private val density: Float) {
         if (values.isEmpty()) {
             drawEmptyMessage(
                 canvas, rect,
-                if (rolledOver) "No data yet today" else "Open PulseLoop to sync",
+                if (rolledOver) "No data yet today" else "Open Kinnora to sync",
                 PulseColors.steps.toArgb(),
             )
             return
