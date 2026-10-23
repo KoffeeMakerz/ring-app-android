@@ -128,7 +128,7 @@ class RingSyncWorker(
                     com.pulseloop.emotion.CalmCue.evaluate(
                         applicationContext, "background sync",
                         buzz = { touches.play(it); played = true },
-                        ringConnected = { touches.isRingConnected },
+                        ringConnected = { touches.canDeliverTouch },
                     )
                     if (played) delay(7_000L)
                 }

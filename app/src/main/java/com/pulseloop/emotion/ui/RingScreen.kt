@@ -24,6 +24,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -32,6 +33,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pulseloop.emotion.Feeling
 import com.pulseloop.emotion.RingTouches
+import com.pulseloop.emotion.TouchTarget
+import com.pulseloop.emotion.WatchLink
 import com.pulseloop.ring.RingBLEClient
 import com.pulseloop.ring.RingConnectionState
 import com.pulseloop.wearables.WearableModel
@@ -86,6 +89,9 @@ fun RingScreen(bleClient: RingBLEClient, touches: RingTouches, onOpenOriginalUi:
             ) { Text("Pair your ring", fontWeight = FontWeight.Bold) }
         }
 
+        SectionLabel("WATCH")
+        WatchCard()
+
         SectionLabel("FEEL EACH TOUCH")
         Text(
             if (connected) "Tap a feeling to play its touch on your ring."
@@ -131,5 +137,54 @@ fun RingScreen(bleClient: RingBLEClient, touches: RingTouches, onOpenOriginalUi:
             "The original screens have an \"Emotion app\" button at the top to come back here.",
             color = EColors.textMuted, fontSize = 12.sp,
         )
+    }
+}
+
+
+/** The Wear OS watch: status, where touches play, and a test. */
+@Composable
+private fun WatchCard() {
+    val watches by WatchLink.watches.collectAsState()
+    val target by WatchLink.target.collectAsState()
+    val error by WatchLink.lastError.collectAsState()
+    LaunchedEffect(Unit) { WatchLink.refresh() }
+    val ready = watches.isNotEmpty()
+    Column(
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(EColors.card).padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.size(10.dp).clip(CircleShape).background(if (ready) EColors.success else EColors.textMuted))
+            Column(Modifier.weight(1f).padding(start = 12.dp)) {
+                Text(watches.firstOrNull()?.name ?: "Wear OS watch", color = EColors.text, fontSize = 17.sp, fontWeight = FontWeight.Bold)
+                Text(
+                    if (ready) "Ready · touches play on your wrist" else "No watch with Kinnora found",
+                    color = EColors.textSecondary, fontSize = 13.sp,
+                )
+            }
+            TextButton(onClick = { WatchLink.refresh() }) { Text("Look again", color = EColors.accent) }
+        }
+        Text("Touches play on", color = EColors.textSecondary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+        Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(11.dp)).background(EColors.ground).padding(3.dp)) {
+            TouchTarget.entries.forEach { t ->
+                val on = t == target
+                Box(
+                    Modifier.weight(1f).clip(RoundedCornerShape(9.dp)).background(if (on) EColors.cardRaised else EColors.ground)
+                        .clickable { WatchLink.setTarget(t) }.padding(vertical = 9.dp),
+                    contentAlignment = Alignment.Center,
+                ) { Text(t.label, color = if (on) EColors.text else EColors.textSecondary, fontSize = 14.sp, fontWeight = FontWeight.SemiBold) }
+            }
+        }
+        Text(
+            if (ready) "Every touch, including practice, experiences and the calm cue, also plays on the watch. With \"Watch\" chosen, the ring stays still while the watch is around."
+            else "Pixel Watch, Galaxy Watch and other Wear OS watches: install Kinnora on the watch (the \"wear\" app in this project), keep it paired to this phone, then tap Look again.",
+            color = EColors.textMuted, fontSize = 12.sp,
+        )
+        OutlinedButton(
+            onClick = { WatchLink.play(Feeling.GRATITUDE.touch, force = true) },
+            enabled = ready,
+            modifier = Modifier.fillMaxWidth(),
+        ) { Text("Test watch", color = if (ready) EColors.text else EColors.textMuted) }
+        error?.let { Text("Couldn't reach the watch: $it", color = EColors.danger, fontSize = 12.sp) }
     }
 }

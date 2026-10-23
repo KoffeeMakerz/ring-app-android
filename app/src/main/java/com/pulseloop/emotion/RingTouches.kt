@@ -54,11 +54,19 @@ class RingTouches(
 ) {
     private var job: Job? = null
 
+    init {
+        WatchLink.init(context)
+    }
+
     val isRingConnected: Boolean
         get() = client.state.value.connectionState == RingConnectionState.CONNECTED
 
     private val canBuzzRing: Boolean
         get() = isRingConnected && client.state.value.activeCapabilities.contains(WearableCapability.FIND_DEVICE)
+
+    /** A touch can be felt somewhere: on the ring, or on a watch that's listening. */
+    val canDeliverTouch: Boolean
+        get() = isRingConnected || WatchLink.canPlay
 
     /** Pulses as (startMs, lengthMs) after clamping to the profile's minimum gap. */
     fun plan(pattern: TouchPattern, profile: RingTouchProfile): List<Pair<Int, Int>> {
@@ -79,9 +87,16 @@ class RingTouches(
         return result
     }
 
+    /**
+     * Plays a touch on the ring and, per the Ring / Watch / Both setting, on a Wear OS watch. With
+     * neither a ring nor a watch, the phone vibrates instead.
+     */
     fun play(pattern: TouchPattern) {
         stop()
-        val onRing = canBuzzRing
+        val ringOk = canBuzzRing
+        val toWatch = WatchLink.play(pattern)
+        val onRing = ringOk && !(toWatch && WatchLink.replacesRing)
+        if (!onRing && toWatch) return // the watch has it
         val profile = if (onRing) RingTouchProfile.forFamily(client.state.value.activeDeviceType) else RingTouchProfile.PHONE
         val steps = plan(pattern, profile)
         job = scope.launch {

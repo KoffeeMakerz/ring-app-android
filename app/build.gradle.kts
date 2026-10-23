@@ -171,6 +171,8 @@ dependencies {
 
     // Phase 6: Location for GPS route recording
     implementation("com.google.android.gms:play-services-location:21.3.0")
+    // Wear OS watches: sends touches to the Kinnora watch app (the :wear module) over the Data Layer.
+    implementation("com.google.android.gms:play-services-wearable:18.2.0")
 
     // Phase 7: Polish — WorkManager, EncryptedSharedPreferences
     implementation("androidx.work:work-runtime-ktx:2.9.1")
