@@ -90,6 +90,7 @@ fun PlayerScreen(
     touches: RingTouches,
     onClose: () -> Unit,
 ) {
+    KeepScreenOn() // no auto-lock mid-session
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     val playback = remember(experience.id) { ExperiencePlayback(experience.track, experience.feelings, touches, scope, context) }
