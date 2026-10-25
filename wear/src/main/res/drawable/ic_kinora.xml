@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Kinnora mark: gold ring + four-point star on plum (see brand kit). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp" android:height="48dp" android:viewportWidth="100" android:viewportHeight="100">
+    <path android:fillColor="#1E1230" android:pathData="M50,0a50,50 0 1,0 0.001,0z" />
+    <path android:strokeColor="#E2B48C" android:strokeWidth="3" android:fillColor="#00000000"
+        android:pathData="M50,20a30,30 0 1,0 0.001,0z" />
+    <path android:fillColor="#FFECD6"
+        android:pathData="M50,38 Q51.6,48.4 62,50 Q51.6,51.6 50,62 Q48.4,51.6 38,50 Q48.4,48.4 50,38 Z" />
+</vector>
