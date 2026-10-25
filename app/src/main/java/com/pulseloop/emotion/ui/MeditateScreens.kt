@@ -173,6 +173,7 @@ fun MeditationSessionScreen(
     coordinator: RingSyncCoordinator,
     onClose: () -> Unit,
 ) {
+    KeepScreenOn() // no auto-lock mid-session
     val context = LocalContext.current
     val heartScope = rememberCoroutineScope()
     val heart = remember { LiveHeart(bleClient, coordinator, heartScope) }
