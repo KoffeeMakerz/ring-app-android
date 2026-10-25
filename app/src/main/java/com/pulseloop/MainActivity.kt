@@ -12,8 +12,6 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import com.pulseloop.health.HealthConnectPermissionReconcile
 import com.pulseloop.notifications.CoachNotifications
-import com.pulseloop.strava.StravaAuth
-import com.pulseloop.strava.StravaTokenStore
 import com.pulseloop.ui.PulseLoopApp
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.Dispatchers
@@ -60,9 +58,9 @@ class MainActivity : ComponentActivity() {
             PulseLoopApp()
         }
 
-        // Handle Strava redirect on cold start (app launched from browser callback).
-        handleStravaRedirect(intent)
         handleEmotionIntent(intent)
+        // Strava was removed; clear tokens an older build may have left.
+        LegacyStravaCleanup.run(this)
     }
 
     override fun onResume() {
@@ -82,7 +80,6 @@ class MainActivity : ComponentActivity() {
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
-        handleStravaRedirect(intent)
         handleEmotionIntent(intent)
     }
 
@@ -91,58 +88,6 @@ class MainActivity : ComponentActivity() {
         intent.getStringExtra(com.pulseloop.emotion.CalmCue.EXTRA_OPEN)?.let {
             com.pulseloop.emotion.EmotionIntents.pending.value = it
             intent.removeExtra(com.pulseloop.emotion.CalmCue.EXTRA_OPEN)
-        }
-    }
-
-    /**
-     * Strava OAuth callback (`pulseloop://localhost/strava-auth?…`). Reached via `onNewIntent` for
-     * the usual case, and via `onCreate` when the browser round-trip outlived our process.
-     *
-     * Failures are recorded in the token store rather than dropped, so the Strava settings screen
-     * can say what went wrong — a silent return leaves the user staring at a "Connect" button that
-     * appears to do nothing.
-     */
-    private fun handleStravaRedirect(intent: Intent) {
-        val uri = intent.data ?: return
-        if (uri.scheme != "pulseloop") return
-        if (!StravaAuth.isConfigured) return
-        val store = StravaTokenStore(this)
-
-        // Strava returns `error=access_denied` when the user declines on the consent screen.
-        uri.getQueryParameter("error")?.takeIf { it.isNotBlank() }?.let { error ->
-            store.takePendingAuthState()
-            store.saveLastError(
-                if (error == "access_denied") "Strava authorization was declined." else "Strava denied authorization: $error"
-            )
-            return
-        }
-
-        // CSRF: the state we generated must come back. One-shot, cleared either way.
-        if (!StravaAuth.validateState(store, uri.getQueryParameter("state"))) {
-            store.saveLastError("Strava authorization could not be verified. Please try connecting again.")
-            return
-        }
-
-        // The consent screen lets the user untick "Upload your activities". Catch it here rather
-        // than letting every future upload fail with an opaque 401.
-        if (!StravaAuth.grantedScopeIncludesWrite(uri.getQueryParameter("scope"))) {
-            store.saveLastError("Strava did not grant upload permission. Reconnect and keep \"Upload your activities\" checked.")
-            return
-        }
-
-        val code = uri.getQueryParameter("code")?.takeIf { it.isNotBlank() } ?: run {
-            store.saveLastError("Strava returned an unexpected authorization response.")
-            return
-        }
-
-        lifecycleScope.launch(Dispatchers.IO) {
-            try {
-                store.save(StravaAuth.exchangeCode(code))
-                store.clearLastError()
-            } catch (e: Exception) {
-                // The code may have expired, or the configured secrets are wrong.
-                store.saveLastError("Could not complete the Strava sign-in: ${e.message ?: "unknown error"}")
-            }
         }
     }
 

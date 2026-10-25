@@ -654,9 +654,6 @@ fun PulseLoopApp() {
                         },
                     )
                 }
-                paddedComposable("settings/strava") {
-                    StravaSettingsScreen(onBack = { navController.popBackStack() })
-                }
                 paddedComposable("settings/health-connect") {
                     HealthConnectSettingsScreen(onBack = { navController.popBackStack() })
                 }

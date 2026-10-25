@@ -19,7 +19,7 @@ Last updated 2026-10-25. Policy names are Google Play Developer Policy sections.
 | Foreground service type `health` | Foreground service types | To do | Declare it in Play Console with a short video of the ring sync that needs it. |
 | Location (fine and coarse) | Permissions, location | Check | Must be needed by a visible feature (workouts or BLE on old Android). No background location is requested; keep it that way. |
 | Camera | Permissions | Check | Only if a visible feature uses it (barcode scan in the original screens). Otherwise remove it. |
-| Data safety form | User Data | To do | Must match reality: health data stays on the phone or goes to Health Connect; the Coach's AI providers if kept; Strava if kept. |
+| Data safety form | User Data | To do | Must match reality: health data stays on the phone or goes to Health Connect; the Coach's AI providers if kept. (Strava was removed on 2026-10-25.) |
 | Wellbeing wording | Misleading claims | To do | Same rule as Apple: "practise a feeling", "reminds you to breathe"; no treatment claims. |
 | Target API level | Target API | OK | Phone app targets 35. Wear app targets 34: raise it before Wear submission if Play requires a newer level. |
 | Music and image rights | Intellectual property | Check | ElevenLabs commercial plan; image credits list. |
@@ -38,4 +38,5 @@ Last updated 2026-10-25. Policy names are Google Play Developer Policy sections.
 
 ## Change log
 
+- 2026-10-25: Strava removed from the app (no OAuth link, no `pulseloop://` redirect, no client secret in the build, no workout uploads; old tokens are deleted on launch). Removes Strava from the Data safety form.
 - 2026-10-25: Note created. Flagged self-update, `USE_EXACT_ALARM` in the Wear app and the Coach's third-party AI as blockers. Added Health Connect, foreground service, Wear OS and promo video notes.

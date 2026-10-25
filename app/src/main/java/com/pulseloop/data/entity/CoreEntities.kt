@@ -199,7 +199,7 @@ data class ActivitySessionEntity(
     val liveActivityID: String? = null,
     val lastSensorPollAt: Long? = null,
     val lastGpsPointAt: Long? = null,
-    /** iOS #100: Strava activity ID after successful upload. null = not uploaded yet. */
+    /** Strava activity ID from older builds (Strava was removed). Kept so the Room schema needs no migration; unused. */
     val stravaActivityId: Long? = null,
     val createdAt: Long = System.currentTimeMillis(),
     val updatedAt: Long = System.currentTimeMillis(),

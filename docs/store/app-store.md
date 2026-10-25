@@ -15,8 +15,8 @@ Last updated 2026-10-25. Guideline numbers are from Apple's App Review Guideline
 |---|---|---|---|
 | Health and wellbeing claims | 1.4.1, 2.3 | To do | Keep all wording to wellbeing: "practise a feeling", "reminds you to breathe". No "reduces stress", "treats anxiety", "proven", "rewires your brain". Check the app text, store text, screenshots and video. |
 | HealthKit (Apple Health) | 5.1.3 | To do | Privacy policy must cover health data. Never use it for ads or sell it. Purpose strings must explain each type read and written. Request only the types the app uses. |
-| Privacy policy and nutrition label | 5.1.1 | To do | Policy URL in App Store Connect and in the app. The label must match reality, including the Coach's AI providers and Strava if kept. |
-| Account and data deletion | 5.1.1(v) | Check | If any feature creates an account (Strava link, Coach), deletion must be possible in the app. "Privacy, export & delete" exists; confirm it covers everything. |
+| Privacy policy and nutrition label | 5.1.1 | To do | Policy URL in App Store Connect and in the app. The label must match reality, including the Coach's AI providers. (Strava was removed on 2026-10-25.) |
+| Account and data deletion | 5.1.1(v) | Check | If any feature creates an account or link (the Coach), deletion must be possible in the app. "Privacy, export & delete" exists; confirm it covers everything. |
 | Background modes | 2.5.4 | Check | Declared: bluetooth-central (ring), location, fetch, processing. Location in the background must be needed by a visible feature (workouts in the original screens). Otherwise remove it. |
 | Developer and legacy screens | 2.5.19 (Oct 2026) | Check | Developer tools are DEBUG-only. Make sure the "original health screens" switch and the simulated ring can't be reached in release, and nothing undocumented is hidden. |
 | Music rights | 5.2 | Check | Songs and practice tracks were made with ElevenLabs. Commercial use needs a paid ElevenLabs plan that grants it. Keep the plan and invoices on file. |
@@ -39,4 +39,5 @@ Last updated 2026-10-25. Guideline numbers are from Apple's App Review Guideline
 
 ## Change log
 
+- 2026-10-25: Strava removed from the app (no third-party account link or uploads; old tokens are cleared on launch). Removes the Strava rows from the privacy label and account deletion.
 - 2026-10-25: Note created. Added Image Playground (on-device only), the watch app, keep-screen-on and the screen-recording-only App Preview rule. Flagged the Coach's third-party AI and the reviewer-without-a-ring path as blockers.

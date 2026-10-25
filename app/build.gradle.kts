@@ -28,16 +28,6 @@ android {
         // Repo the self-updater polls for new releases.
         buildConfigField("String", "GITHUB_REPO", "\"foureight84/PulseLoopAndroid\"")
 
-        // Strava OAuth — credentials from local.properties (gitignored), fall back to
-        // empty placeholders so non-Strava builds compile without the file.
-        val localProps = Properties().apply {
-            val f = rootProject.file("local.properties")
-            if (f.exists()) f.inputStream().use { load(it) }
-        }
-        buildConfigField("String", "STRAVA_CLIENT_ID",
-            "\"${localProps.getProperty("stravaClientId") ?: ""}\"")
-        buildConfigField("String", "STRAVA_CLIENT_SECRET",
-            "\"${localProps.getProperty("stravaClientSecret") ?: ""}\"")
     }
 
     buildFeatures {
