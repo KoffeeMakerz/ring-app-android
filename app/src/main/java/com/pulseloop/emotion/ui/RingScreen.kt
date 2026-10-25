@@ -44,8 +44,9 @@ import com.pulseloop.wearables.WearableModel
 fun RingScreen(bleClient: RingBLEClient, touches: RingTouches, onOpenOriginalUi: (route: String?) -> Unit, onOpenCalmCue: () -> Unit) {
     val state by bleClient.state.collectAsState()
     val connected = state.connectionState == RingConnectionState.CONNECTED
-    val ringName = WearableModel.model(state.activeWearableModelID)?.displayName
-        ?: state.activeDeviceType?.displayName ?: bleClient.connectedDeviceName ?: "Your ring"
+    val ringName = RingBLEClient.displayableName(WearableModel.model(state.activeWearableModelID)?.displayName)
+        ?: RingBLEClient.displayableName(state.activeDeviceType?.displayName)
+        ?: bleClient.connectedDeviceName ?: "Smart ring"
     // The ring's own Bluetooth name, small under the model name when it adds something.
     val deviceName = remember(state.connectionState, state.activeWearableModelID) { bleClient.connectedDeviceName }
         ?.takeIf { it != ringName }
