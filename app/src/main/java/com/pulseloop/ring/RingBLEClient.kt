@@ -141,9 +141,10 @@ class RingBLEClient(
     val connectedDeviceName: String?
         get() {
             if (_state.value.connectionState != RingConnectionState.CONNECTED) return null
-            val name = activeAdvertisedName ?: try { bluetoothGatt?.device?.name } catch (_: SecurityException) { null }
-            return name?.takeIf { it.isNotBlank() }
+            return displayableName(activeAdvertisedName)
+                ?: displayableName(try { bluetoothGatt?.device?.name } catch (_: SecurityException) { null })
         }
+
     /** Scanner's family classification for the in-flight connection, before any carousel override.
      *  Read post-connect by the jring re-route, which must only fire against the ambiguous
      *  generic-"SMART_RING" guess. See [beginConnect]. */
@@ -1835,6 +1836,19 @@ class RingBLEClient(
         processConnectionOwner.compareAndSet(this, null)
 
     companion object {
+        private val PLACEHOLDER_NAMES = setOf("n/a", "na", "null", "nil", "none", "unknown", "default", "undefined")
+
+        /**
+         * A ring name worth showing: not blank, not only dashes or dots ("--"), and not a placeholder
+         * some firmwares advertise ("N/A", "null", "unknown"). null otherwise, so callers fall back.
+         * Same rule as iOS `RingBLEClient.displayableName`.
+         */
+        fun displayableName(name: String?): String? {
+            val trimmed = name?.trim() ?: return null
+            if (trimmed.none { it.isLetterOrDigit() }) return null
+            return trimmed.takeUnless { it.lowercase() in PLACEHOLDER_NAMES }
+        }
+
         private const val LAST_PERIPHERAL_KEY = "ring.lastPeripheralIdentifier"
         private const val LAST_DEVICE_TYPE_KEY = "ring.lastDeviceType"
         private const val LAST_WEARABLE_MODEL_KEY = "ring.lastWearableModel"
