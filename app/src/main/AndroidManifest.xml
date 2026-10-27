@@ -84,13 +84,6 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-            <!-- Strava OAuth redirect: captures pulseloop://localhost/strava-auth?code=... -->
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="pulseloop" android:host="localhost" android:pathPrefix="/strava-auth" />
-            </intent-filter>
         </activity>
 
         <!-- FileProvider for diagnostics export -->
@@ -103,6 +96,16 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/file_paths" />
         </provider>
+
+        <!-- Kinnora watch app (Wear OS): "Play on phone" requests. -->
+        <service
+            android:name=".emotion.PhoneWearListenerService"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.google.android.gms.wearable.MESSAGE_RECEIVED" />
+                <data android:scheme="wear" android:host="*" android:path="/kinora/start" />
+            </intent-filter>
+        </service>
 
         <!-- Phase 6: Workout foreground service -->
         <service

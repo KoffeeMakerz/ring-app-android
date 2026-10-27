@@ -64,9 +64,26 @@ class RingTouches(
     private val canBuzzRing: Boolean
         get() = isRingConnected && client.state.value.activeCapabilities.contains(WearableCapability.FIND_DEVICE)
 
+    /** Kinnora's "Use a ring" switch, plus a connected ring. */
+    val ringActive: Boolean
+        get() = DevicePrefs.useRing(context) && isRingConnected
+
     /** A touch can be felt somewhere: on the ring, or on a watch that's listening. */
     val canDeliverTouch: Boolean
-        get() = isRingConnected || WatchLink.canPlay
+        get() = ringActive || WatchLink.available
+
+    /**
+     * Where a touch goes now. The ring comes first: with "Ring first" the watch plays only when no
+     * ring is connected; with "Both", both play. Same rule as iOS `RingHapticsService.route()`.
+     */
+    fun route(): Pair<Boolean, Boolean> {
+        val ringOk = DevicePrefs.useRing(context) && canBuzzRing
+        val watchOk = WatchLink.available
+        return when (WatchLink.target.value) {
+            TouchTarget.RING_FIRST -> ringOk to (!ringOk && watchOk)
+            TouchTarget.BOTH -> ringOk to watchOk
+        }
+    }
 
     /** Pulses as (startMs, lengthMs) after clamping to the profile's minimum gap. */
     fun plan(pattern: TouchPattern, profile: RingTouchProfile): List<Pair<Int, Int>> {
@@ -88,14 +105,13 @@ class RingTouches(
     }
 
     /**
-     * Plays a touch on the ring and, per the Ring / Watch / Both setting, on a Wear OS watch. With
+     * Plays a touch on the ring first or, per the Ring first / Both setting, on a Wear OS watch. With
      * neither a ring nor a watch, the phone vibrates instead.
      */
     fun play(pattern: TouchPattern) {
         stop()
-        val ringOk = canBuzzRing
-        val toWatch = WatchLink.play(pattern)
-        val onRing = ringOk && !(toWatch && WatchLink.replacesRing)
+        val (onRing, toWatch) = route()
+        if (toWatch) WatchLink.play(pattern)
         if (!onRing && toWatch) return // the watch has it
         val profile = if (onRing) RingTouchProfile.forFamily(client.state.value.activeDeviceType) else RingTouchProfile.PHONE
         val steps = plan(pattern, profile)

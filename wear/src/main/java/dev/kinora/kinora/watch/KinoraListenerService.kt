@@ -7,7 +7,12 @@ import com.google.android.gms.wearable.MessageEvent
 import com.google.android.gms.wearable.WearableListenerService
 import org.json.JSONObject
 
-/** Receives touches ("/kinora/play") and reminder plans ("/kinora/reminders") from the phone. */
+/**
+ * Receives from the Kinnora phone app, even when this app isn't open:
+ * - "/kinora/play": a touch to play now;
+ * - "/kinora/sync": experiences and the reminder plan (data item, kept in sync by the Data Layer);
+ * - "/kinora/reminders": the reminder plan alone (older phone builds).
+ */
 class KinoraListenerService : WearableListenerService() {
     override fun onMessageReceived(event: MessageEvent) {
         if (event.path == "/kinora/play") {
@@ -18,9 +23,11 @@ class KinoraListenerService : WearableListenerService() {
 
     override fun onDataChanged(events: DataEventBuffer) {
         for (e in events) {
-            if (e.type == DataEvent.TYPE_CHANGED && e.dataItem.uri.path == "/kinora/reminders") {
-                val cues = DataMapItem.fromDataItem(e.dataItem).dataMap.getString("cues") ?: "[]"
-                CueStore.save(this, cues)
+            if (e.type != DataEvent.TYPE_CHANGED) continue
+            val map = DataMapItem.fromDataItem(e.dataItem).dataMap
+            when (e.dataItem.uri.path) {
+                "/kinora/sync" -> WatchStore.apply(this, map.getString("json") ?: continue)
+                "/kinora/reminders" -> CueStore.save(this, map.getString("cues") ?: "[]")
             }
         }
     }

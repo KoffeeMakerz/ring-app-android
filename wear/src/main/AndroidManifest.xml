@@ -7,9 +7,8 @@
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
-    <!-- Reminder touches must play on time: exact alarms. -->
+    <!-- Reminder touches play on time: exact alarms, granted by the user (falls back to inexact). -->
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
-    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
 
     <application
         android:label="Kinnora"
@@ -34,6 +33,7 @@
             <intent-filter>
                 <action android:name="com.google.android.gms.wearable.DATA_CHANGED" />
                 <data android:scheme="wear" android:host="*" android:path="/kinora/reminders" />
+                <data android:scheme="wear" android:host="*" android:path="/kinora/sync" />
             </intent-filter>
         </service>
 

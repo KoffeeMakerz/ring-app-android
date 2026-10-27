@@ -18,6 +18,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -32,6 +34,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pulseloop.emotion.Feeling
+import com.pulseloop.emotion.DevicePrefs
 import com.pulseloop.emotion.RingTouches
 import com.pulseloop.emotion.TouchTarget
 import com.pulseloop.emotion.WatchLink
@@ -39,9 +42,18 @@ import com.pulseloop.ring.RingBLEClient
 import com.pulseloop.ring.RingConnectionState
 import com.pulseloop.wearables.WearableModel
 
-/** Ring status, each feeling's touch to try, and the way to pairing and health stats. */
+/**
+ * Devices: the ring and the watch, each with its own "use it" switch, how touches are routed (ring
+ * first), each feeling's touch to try, and the way to pairing and health stats.
+ */
 @Composable
 fun RingScreen(bleClient: RingBLEClient, touches: RingTouches, onOpenOriginalUi: (route: String?) -> Unit, onOpenCalmCue: () -> Unit) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val useRing by DevicePrefs.useRingFlow(context).collectAsState()
+    val ringOn = useRing ?: true
+    val useWatch by WatchLink.useWatch.collectAsState()
+    val watches by WatchLink.watches.collectAsState()
+    val routeTarget by WatchLink.target.collectAsState()
     val state by bleClient.state.collectAsState()
     val connected = state.connectionState == RingConnectionState.CONNECTED
     val ringName = RingBLEClient.displayableName(WearableModel.model(state.activeWearableModelID)?.displayName)
@@ -62,8 +74,17 @@ fun RingScreen(bleClient: RingBLEClient, touches: RingTouches, onOpenOriginalUi:
             .padding(start = 20.dp, end = 20.dp, top = 56.dp, bottom = 24.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Text("Ring", color = EColors.text, fontSize = 30.sp, fontWeight = FontWeight.Bold)
-        Row(
+        Text("Devices", color = EColors.text, fontSize = 30.sp, fontWeight = FontWeight.Bold)
+        Text(
+            "Each feeling plays as a touch on your ring first, or on your watch when no ring is connected. With neither, your phone vibrates.",
+            color = EColors.textSecondary, fontSize = 13.sp,
+        )
+
+        SectionLabel("SMART RING")
+        DeviceSwitch("Use a ring", if (ringOn) "Touches go to your ring first" else "Off: no touches go to a ring, and it stays disconnected", ringOn) {
+            DevicePrefs.setUseRing(context, it, bleClient)
+        }
+        if (ringOn) Row(
             Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(EColors.card).padding(16.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -77,12 +98,12 @@ fun RingScreen(bleClient: RingBLEClient, touches: RingTouches, onOpenOriginalUi:
                 TextButton(onClick = { bleClient.connectLastKnown() }) { Text("Connect", color = EColors.accent) }
             }
         }
-        if (bleClient.hasLastKnownRing) {
+        if (ringOn && bleClient.hasLastKnownRing) {
             TextButton(onClick = { onOpenOriginalUi("pairing") }, modifier = Modifier.fillMaxWidth()) {
                 Text("Change ring", color = EColors.accent, fontWeight = FontWeight.SemiBold)
             }
         }
-        if (!bleClient.hasLastKnownRing) {
+        if (ringOn && !bleClient.hasLastKnownRing) {
             Button(
                 onClick = { onOpenOriginalUi("pairing") },
                 colors = ButtonDefaults.buttonColors(containerColor = EColors.accent, contentColor = EColors.onAccent),
@@ -90,13 +111,22 @@ fun RingScreen(bleClient: RingBLEClient, touches: RingTouches, onOpenOriginalUi:
             ) { Text("Pair your ring", fontWeight = FontWeight.Bold) }
         }
 
-        SectionLabel("WATCH")
-        WatchCard()
+        SectionLabel("WEAR OS WATCH")
+        DeviceSwitch("Use a watch", if (useWatch) "Pixel Watch, Galaxy Watch and other Wear OS watches" else "Off: nothing is sent to a watch", useWatch) {
+            WatchLink.setUseWatch(it)
+        }
+        if (useWatch) WatchCard()
 
         SectionLabel("FEEL EACH TOUCH")
+        val ringPlays = ringOn && connected
+        val watchPlays = useWatch && watches.isNotEmpty()
         Text(
-            if (connected) "Tap a feeling to play its touch on your ring."
-            else "No ring connected: your phone vibrates instead, so you can still try each touch.",
+            when {
+                ringPlays && watchPlays && routeTarget == TouchTarget.BOTH -> "Tap a feeling to play its touch on your ring and watch."
+                ringPlays -> "Tap a feeling to play its touch on your ring."
+                watchPlays -> "No ring connected: tap a feeling to play its touch on your watch."
+                else -> "No ring or watch connected: your phone vibrates instead, so you can still try each touch."
+            },
             color = EColors.textSecondary, fontSize = 13.sp,
         )
         Feeling.order.forEach { f ->
@@ -165,7 +195,7 @@ private fun WatchCard() {
             }
             TextButton(onClick = { WatchLink.refresh() }) { Text("Look again", color = EColors.accent) }
         }
-        Text("Touches play on", color = EColors.textSecondary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+        Text("With a ring and a watch", color = EColors.textSecondary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
         Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(11.dp)).background(EColors.ground).padding(3.dp)) {
             TouchTarget.entries.forEach { t ->
                 val on = t == target
@@ -177,7 +207,7 @@ private fun WatchCard() {
             }
         }
         Text(
-            if (ready) "Every touch, including practice, experiences and the calm cue, also plays on the watch. With \"Watch\" chosen, the ring stays still while the watch is around."
+            if (ready) target.detail
             else "Pixel Watch, Galaxy Watch and other Wear OS watches: install Kinnora on the watch (the \"wear\" app in this project), keep it paired to this phone, then tap Look again.",
             color = EColors.textMuted, fontSize = 12.sp,
         )
@@ -187,5 +217,25 @@ private fun WatchCard() {
             modifier = Modifier.fillMaxWidth(),
         ) { Text("Test watch", color = if (ready) EColors.text else EColors.textMuted) }
         error?.let { Text("Couldn't reach the watch: $it", color = EColors.danger, fontSize = 12.sp) }
+    }
+}
+
+
+/** A card row with a title, a line of detail and a switch. */
+@Composable
+private fun DeviceSwitch(title: String, detail: String, checked: Boolean, onChange: (Boolean) -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(EColors.card)
+            .clickable { onChange(!checked) }.padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(title, color = EColors.text, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+            Text(detail, color = EColors.textSecondary, fontSize = 12.sp)
+        }
+        Switch(
+            checked = checked, onCheckedChange = onChange,
+            colors = SwitchDefaults.colors(checkedThumbColor = EColors.onAccent, checkedTrackColor = EColors.accent),
+        )
     }
 }
