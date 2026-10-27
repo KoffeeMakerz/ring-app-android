@@ -49,6 +49,7 @@ object WatchLink {
     private const val PREFS = "emotion.watch"
     private const val KEY_TARGET = "touchTarget"
     private const val KEY_USE_WATCH = "useWatch"
+    private const val KEY_REMINDERS = "remindersOnWatch"
 
     data class Watch(val id: String, val name: String)
 
@@ -62,6 +63,17 @@ object WatchLink {
     private val _useWatch = MutableStateFlow(true)
     /** Kinnora's "Use a watch" switch (Devices tab). Off = nothing is sent to the watch. */
     val useWatch: StateFlow<Boolean> = _useWatch.asStateFlow()
+
+    private val _remindersOnWatch = MutableStateFlow(true)
+    /**
+     * "Reminders on the watch": with the watch app installed, the watch plays each reminder itself
+     * (its own alarms) and the phone posts no cue notifications, so nobody gets two. Same setting
+     * as iOS `WatchLink.remindersOnWatch`.
+     */
+    val remindersOnWatch: StateFlow<Boolean> = _remindersOnWatch.asStateFlow()
+
+    /** The watch is delivering the reminders now. */
+    val takesOverReminders: Boolean get() = available && _remindersOnWatch.value
 
     private val _lastError = MutableStateFlow<String?>(null)
     val lastError: StateFlow<String?> = _lastError.asStateFlow()
@@ -79,21 +91,23 @@ object WatchLink {
         // Older builds stored RING, WATCH or BOTH.
         _target.value = if (saved == "BOTH") TouchTarget.BOTH else TouchTarget.RING_FIRST
         _useWatch.value = app.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(KEY_USE_WATCH, true)
+        _remindersOnWatch.value = app.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(KEY_REMINDERS, true)
         runCatching { Wearable.getCapabilityClient(app).addListener(listener, CAPABILITY) }
         refresh()
         // Keep the watch's copy of the experiences current: on every change, and when a watch appears.
         scope.launch {
-            combine(EmotionStore.get(app).experiences, _watches, _useWatch) { exps, nodes, use -> Triple(exps, nodes, use) }
-                .collect { (exps, nodes, use) -> if (use && nodes.isNotEmpty()) sync(exps) }
+            combine(EmotionStore.get(app).experiences, EmotionData.get(app).state, _watches, _useWatch, _remindersOnWatch) { exps, data, nodes, use, _ ->
+                Triple(exps, data, use && nodes.isNotEmpty())
+            }.collect { (exps, data, ready) -> if (ready) sync(exps, data) }
         }
     }
 
     /**
-     * Sends the experiences (and, once Android plans reminders, the reminder plan) as a data item.
+     * Sends the experiences and the reminder plan as a data item.
      * The Data Layer delivers it even when the watch app isn't running and keeps the latest copy.
      * Same content as iOS `WatchLink.sync()`.
      */
-    private fun sync(experiences: List<Experience>) {
+    private fun sync(experiences: List<Experience>, data: EmotionDataFile) {
         val app = appContext ?: return
         fun onFirst(p: TouchPattern): List<Int> = if (p.startsWithVibration) p.durationsMs else listOf(0) + p.durationsMs
         val exps = JSONArray()
@@ -112,8 +126,22 @@ object WatchLink {
                 .put("feelings", JSONArray(feelings.map { it.raw }))
                 .put("durationS", duration).put("cues", cues))
         }
-        // Android has no reminder planner yet, so the watch gets an empty plan (its own alarms clear).
-        val body = JSONObject().put("experiences", exps).put("reminders", JSONArray()).toString()
+        // The reminder plan (iOS sends the same): the watch plays each one with its own alarm.
+        // Only while the watch has taken reminders over; otherwise an empty plan clears its alarms.
+        val rems = JSONArray()
+        if (_remindersOnWatch.value) {
+            val now = System.currentTimeMillis()
+            data.events.filter { it.status == "scheduled" && it.scheduledAt > now }.take(60).forEach { e ->
+                val exp = experiences.firstOrNull { it.id == e.experienceId }
+                val (title, text) = ReminderScheduler.cueText(e.feeling, exp)
+                val pattern = exp?.touchSequence ?: e.feeling.touch
+                rems.put(JSONObject()
+                    .put("id", e.id).put("at", e.scheduledAt).put("title", title).put("body", text)
+                    .put("feeling", e.feelingRaw).put("experienceId", exp?.id ?: JSONObject.NULL)
+                    .put("pattern", JSONObject().put("id", pattern.id).put("name", pattern.name).put("durations_ms", JSONArray(onFirst(pattern)))))
+            }
+        }
+        val body = JSONObject().put("experiences", exps).put("reminders", rems).toString()
         runCatching {
             val req = PutDataMapRequest.create(PATH_SYNC).apply {
                 dataMap.putString("json", body)
@@ -126,6 +154,12 @@ object WatchLink {
     fun setTarget(target: TouchTarget) {
         _target.value = target
         appContext?.getSharedPreferences(PREFS, Context.MODE_PRIVATE)?.edit()?.putString(KEY_TARGET, target.name)?.apply()
+    }
+
+    fun setRemindersOnWatch(on: Boolean) {
+        _remindersOnWatch.value = on
+        appContext?.getSharedPreferences(PREFS, Context.MODE_PRIVATE)?.edit()?.putBoolean(KEY_REMINDERS, on)?.apply()
+        appContext?.let { ReminderScheduler.scheduleNext(it) }
     }
 
     fun setUseWatch(on: Boolean) {

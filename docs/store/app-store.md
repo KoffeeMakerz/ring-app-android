@@ -41,6 +41,7 @@ Last updated 2026-10-25. Guideline numbers are from Apple's App Review Guideline
 
 ## Change log
 
+- 2026-10-27: No iPhone change. Android now has the same tabs, onboarding and reminders as iOS (see google-play.md).
 - 2026-10-27: Apple Watch app v2: experiences (play on the watch or the iPhone), reminders list, reminders delivered by the watch. Devices tab with ring and watch switches; the ring comes first.
 - 2026-10-27: Apple Watch target added to the Xcode project and built. Still needs its own app icon and watch screenshots before submission.
 - 2026-10-25: Strava removed from the app (no third-party account link or uploads; old tokens are cleared on launch). Removes the Strava rows from the privacy label and account deletion.
