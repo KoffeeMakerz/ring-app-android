@@ -2,6 +2,12 @@ package com.pulseloop.emotion.ui
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
@@ -73,9 +79,30 @@ fun EmotionRoot(
             EmotionIntents.pending.value = null
             screen = EScreen.Meditation(MeditationKind.CALM_BREATH)
         }
+        // "Play on phone" from the watch.
+        val open = pendingOpen
+        if (open != null && open.startsWith(EmotionIntents.PLAY_PREFIX)) {
+            EmotionIntents.pending.value = null
+            val id = open.removePrefix(EmotionIntents.PLAY_PREFIX)
+            if (store.get(id) != null) screen = EScreen.Player(id)
+        }
     }
 
     BackHandler(enabled = screen != EScreen.Tabs) { screen = EScreen.Tabs }
+
+    // First launch: which devices do you use? (Ring and watch can be changed any time under Devices.)
+    val devicePrefs = remember { context.getSharedPreferences("emotion.devices", android.content.Context.MODE_PRIVATE) }
+    var askDevices by remember { mutableStateOf(!devicePrefs.getBoolean("asked", false)) }
+    if (askDevices && screen == EScreen.Tabs) {
+        DevicesQuestion(hasRing = bleClient.hasLastKnownRing) { ring, watch ->
+            devicePrefs.edit().putBoolean("asked", true).apply()
+            com.pulseloop.emotion.DevicePrefs.setUseRing(context, ring, bleClient)
+            com.pulseloop.emotion.WatchLink.setUseWatch(watch)
+            askDevices = false
+            // A ring that isn't paired yet: go to Devices to pair it.
+            if (ring && !bleClient.hasLastKnownRing) tab = 2
+        }
+    }
 
     when (val s = screen) {
         is EScreen.Builder -> BuilderScreen(
@@ -132,7 +159,7 @@ fun EmotionRoot(
                     NavigationBarItem(
                         selected = tab == 2, onClick = { tab = 2 }, colors = colors,
                         icon = { Icon(Icons.Filled.RadioButtonChecked, contentDescription = null) },
-                        label = { Text("Ring") },
+                        label = { Text("Devices") },
                     )
                 }
             },
@@ -157,4 +184,46 @@ fun EmotionRoot(
             }
         }
     }
+}
+
+
+/** First-launch question: which devices play the touches. Nothing is required: the phone can vibrate. */
+@Composable
+private fun DevicesQuestion(hasRing: Boolean, onDone: (ring: Boolean, watch: Boolean) -> Unit) {
+    var ring by remember { mutableStateOf(true) }
+    var watch by remember { mutableStateOf(false) }
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = {},
+        containerColor = EColors.card,
+        title = { Text("Which devices do you use?", color = EColors.text) },
+        text = {
+            Column {
+                Text(
+                    "Kinnora plays each feeling as a touch: on a smart ring first, or on a Wear OS watch. With neither, your phone vibrates. You can change this any time under Devices.",
+                    color = EColors.textSecondary, fontSize = 13.sp,
+                )
+                listOf(
+                    Triple("Smart ring", if (hasRing) "Already paired" else "You'll pair it next", ring),
+                    Triple("Wear OS watch", "Pixel Watch, Galaxy Watch…", watch),
+                ).forEachIndexed { i, (title, detail, on) ->
+                    androidx.compose.foundation.layout.Row(
+                        Modifier.fillMaxWidth().padding(top = 10.dp)
+                            .clickable { if (i == 0) ring = !ring else watch = !watch },
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        androidx.compose.material3.Checkbox(checked = on, onCheckedChange = { if (i == 0) ring = it else watch = it })
+                        Column(Modifier.padding(start = 4.dp)) {
+                            Text(title, color = EColors.text, fontSize = 15.sp)
+                            Text(detail, color = EColors.textMuted, fontSize = 12.sp)
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            androidx.compose.material3.TextButton(onClick = { onDone(ring, watch) }) {
+                Text(if (!ring && !watch) "Use my phone" else "Continue", color = EColors.accent)
+            }
+        },
+    )
 }

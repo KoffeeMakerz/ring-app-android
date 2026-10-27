@@ -374,4 +374,6 @@ object CalmCue {
 /** Requests from outside the composition (e.g. a notification tap) for the emotion app to open a screen. */
 object EmotionIntents {
     val pending = MutableStateFlow<String?>(null)
+    /** `pending` value that opens an experience's player: "play:<experience id>". */
+    const val PLAY_PREFIX = "play:"
 }
