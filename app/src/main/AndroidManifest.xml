@@ -39,6 +39,8 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <!-- Emotion app: the phone stands in for the ring touch when no ring is connected. -->
     <uses-permission android:name="android.permission.VIBRATE" />
+    <!-- Reminder cues: alarms are cleared on reboot, so the plan is rebuilt after boot. -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
     <!-- Phase 8: Health Connect export (write-only). Exactly the Phase 1–4 data types from
@@ -106,6 +108,22 @@
                 <data android:scheme="wear" android:host="*" android:path="/kinora/start" />
             </intent-filter>
         </service>
+
+        <!-- Reminder cues (emotion app): the alarm for the next cue, and re-planning after reboot,
+             app update and clock changes. -->
+        <receiver
+            android:name=".emotion.ReminderAlarmReceiver"
+            android:exported="false" />
+        <receiver
+            android:name=".emotion.ReminderRescheduleReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+            </intent-filter>
+        </receiver>
 
         <!-- Phase 6: Workout foreground service -->
         <service

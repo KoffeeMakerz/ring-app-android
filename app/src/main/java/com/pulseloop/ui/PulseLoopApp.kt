@@ -288,6 +288,8 @@ fun PulseLoopApp() {
         val calmTouches = remember { com.pulseloop.emotion.RingTouches(context, bleClient, calmScope) }
         LaunchedEffect(Unit) {
             com.pulseloop.emotion.CalmCue.buzzer = { calmTouches.play(it) }
+            // Reminder cues play through the same connection (ring first, then watch).
+            com.pulseloop.emotion.CueHooks.touches = calmTouches
             com.pulseloop.emotion.CalmCue.isRingConnected = { calmTouches.canDeliverTouch }
             com.pulseloop.emotion.CalmCue.reconnect = { if (bleClient.hasLastKnownRing) bleClient.connectLastKnown() }
             com.pulseloop.emotion.CalmCue.measureHr = { coordinator.measureHeartRateOnly() }

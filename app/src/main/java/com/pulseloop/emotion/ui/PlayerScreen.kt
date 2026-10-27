@@ -77,6 +77,7 @@ import com.pulseloop.emotion.RingTouches
 import com.pulseloop.emotion.SlideImage
 import com.pulseloop.emotion.SlidePlaceholder
 import com.pulseloop.emotion.SlideRef
+import com.pulseloop.emotion.trainingPrompt
 import kotlinx.coroutines.delay
 
 /**
@@ -89,6 +90,10 @@ fun PlayerScreen(
     store: EmotionStore,
     touches: RingTouches,
     onClose: () -> Unit,
+    /** Set for a single-feeling practice: practice wording, no vision panel. */
+    practiceFeeling: Feeling? = null,
+    /** Set inside a training session: called when the music ends or on "Finish and check in". */
+    onFinish: (() -> Unit)? = null,
 ) {
     KeepScreenOn() // no auto-lock mid-session
     val scope = rememberCoroutineScope()
@@ -107,6 +112,14 @@ fun PlayerScreen(
         store.markPlayed(experience.id)
     }
     DisposableEffect(experience.id) { onDispose { playback.stop() } }
+    // A training session moves on to the check-in when the music ends.
+    val finished = playback.progress >= 1.0
+    LaunchedEffect(finished) {
+        if (finished && onFinish != null) {
+            immersive = false
+            onFinish()
+        }
+    }
 
     // Full screen hides the system bars too.
     val view = LocalView.current
@@ -175,7 +188,7 @@ fun PlayerScreen(
                                 }
                             }
                         }
-                        BarButton(Icons.Filled.List, "Vision") { showVision = true }
+                        if (practiceFeeling == null) BarButton(Icons.Filled.List, "Vision") { showVision = true }
                     }
                     if (playback.parts.size > 1) {
                         PartBars(
@@ -203,7 +216,7 @@ fun PlayerScreen(
         // Controls, below the image.
         AnimatedVisibility(visible = !immersive, enter = slideInVertically { it } + fadeIn(), exit = slideOutVertically { it } + fadeOut()) {
             Column(Modifier.fillMaxWidth().navigationBarsPadding().padding(start = 20.dp, end = 20.dp, top = 16.dp, bottom = 8.dp)) {
-                Text(experience.title.ifBlank { "My vision" }, color = EColors.text, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+                Text(if (practiceFeeling != null) "Step 2 · Feel it" else experience.title.ifBlank { "My vision" }, color = EColors.text, fontSize = 22.sp, fontWeight = FontWeight.Bold)
                 Row(Modifier.padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                     Box(Modifier.size(8.dp).clip(CircleShape).background(now.color))
                     Text(now.label, color = now.color, fontSize = 13.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = 8.dp))
@@ -214,7 +227,7 @@ fun PlayerScreen(
                         )
                     }
                 }
-                Text(now.experiencePrompt, color = EColors.text, fontSize = 19.sp, fontWeight = FontWeight.Medium, modifier = Modifier.padding(top = 6.dp))
+                Text(practiceFeeling?.trainingPrompt ?: now.experiencePrompt, color = EColors.text, fontSize = 19.sp, fontWeight = FontWeight.Medium, modifier = Modifier.padding(top = 6.dp))
                 Row(
                     Modifier.padding(top = 12.dp).fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(EColors.card)
                         .border(1.5.dp, if (playback.inCue) now.color else EColors.card, RoundedCornerShape(16.dp))
@@ -228,7 +241,7 @@ fun PlayerScreen(
                             color = EColors.text, fontSize = 15.sp, fontWeight = FontWeight.SemiBold,
                         )
                         Text(
-                            if (playback.inCue) "Let the feeling peak as it buzzes" else "Stay with the picture. Feel it as real.",
+                            if (playback.inCue) "Let the feeling peak as it buzzes" else if (practiceFeeling != null) "Notice the feeling as it buzzes" else "Stay with the picture. Feel it as real.",
                             color = EColors.textSecondary, fontSize = 13.sp,
                         )
                     }
@@ -267,6 +280,11 @@ fun PlayerScreen(
                     }) { Icon(Icons.Filled.SkipNext, contentDescription = if (multi) "Next part" else "Forward 15 seconds", tint = EColors.text) }
                     IconButton(onClick = { playback.playCueNow() }) {
                         Icon(Icons.Filled.Vibration, contentDescription = "Play the ring touch now", tint = now.color)
+                    }
+                }
+                if (onFinish != null) {
+                    TextButton(onClick = { playback.pause(); onFinish() }, modifier = Modifier.fillMaxWidth()) {
+                        Text("Finish and check in", color = EColors.accent, fontWeight = FontWeight.SemiBold)
                     }
                 }
             }

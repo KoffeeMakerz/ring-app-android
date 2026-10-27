@@ -846,6 +846,15 @@ Completion gate:
 1. Build/test affected behavior before declaring completion.
 2. Preserve upstream LICENSE and attribution obligations.
 
+## Keep iOS and Android aligned
+
+Kinnora ships on iOS (`ring-app-ios`) and Android (`ring-app-android`) with the same tabs (Home,
+Experiences, Practice, Meditate, Devices), flows and wording. **Any feature or flow change goes into
+both apps in the same piece of work**, or the gap is written into `docs/emotion-app/parity.md` with
+a reason. Keep model names, raw values, touch patterns and defaults identical across platforms.
+`docs/emotion-app/parity.md` (same file in both repos) maps each iOS screen to its Android screen;
+update it when a screen is added, renamed or removed.
+
 ## Store notes: update them with every change
 
 `docs/store/app-store.md` and `docs/store/google-play.md` track what the App Store and Google Play

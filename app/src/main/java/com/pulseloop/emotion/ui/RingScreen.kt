@@ -25,6 +25,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
@@ -47,7 +48,15 @@ import com.pulseloop.wearables.WearableModel
  * first), each feeling's touch to try, and the way to pairing and health stats.
  */
 @Composable
-fun RingScreen(bleClient: RingBLEClient, touches: RingTouches, onOpenOriginalUi: (route: String?) -> Unit, onOpenCalmCue: () -> Unit) {
+fun RingScreen(
+    bleClient: RingBLEClient,
+    touches: RingTouches,
+    onOpenOriginalUi: (route: String?) -> Unit,
+    onOpenCalmCue: () -> Unit,
+    onOpenReminders: () -> Unit = {},
+    onOpenLearn: () -> Unit = {},
+    onOpenVibeCheck: () -> Unit = {},
+) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val useRing by DevicePrefs.useRingFlow(context).collectAsState()
     val ringOn = useRing ?: true
@@ -62,6 +71,25 @@ fun RingScreen(bleClient: RingBLEClient, touches: RingTouches, onOpenOriginalUi:
     // The ring's own Bluetooth name, small under the model name when it adds something.
     val deviceName = remember(state.connectionState, state.activeWearableModelID) { bleClient.connectedDeviceName }
         ?.takeIf { it != ringName }
+    var confirmReset by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf(false) }
+    if (confirmReset) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { confirmReset = false },
+            containerColor = EColors.card,
+            title = { Text("Delete all emotion app data on this phone?", color = EColors.text) },
+            text = { Text("Your experiences and their photos, practice history and reminders. Health data from the ring stays.", color = EColors.textSecondary) },
+            confirmButton = {
+                TextButton(onClick = {
+                    val store = com.pulseloop.emotion.EmotionStore.get(context)
+                    store.experiences.value.forEach { store.delete(it.id) }
+                    com.pulseloop.emotion.EmotionData.get(context).deleteAll()
+                    com.pulseloop.emotion.ReminderScheduler.rebuild(context)
+                    confirmReset = false
+                }) { Text("Delete experiences, training and reminders", color = EColors.danger) }
+            },
+            dismissButton = { TextButton(onClick = { confirmReset = false }) { Text("Cancel", color = EColors.text) } },
+        )
+    }
     val status = when (state.connectionState) {
         RingConnectionState.CONNECTED -> "Connected" + (state.batteryPercent?.let { " · $it% battery" } ?: "")
         RingConnectionState.CONNECTING, RingConnectionState.RECONNECTING -> "Connecting…"
@@ -97,6 +125,12 @@ fun RingScreen(bleClient: RingBLEClient, touches: RingTouches, onOpenOriginalUi:
             if (!connected && bleClient.hasLastKnownRing) {
                 TextButton(onClick = { bleClient.connectLastKnown() }) { Text("Connect", color = EColors.accent) }
             }
+        }
+        if (ringOn) Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            PrimaryButton("Test buzz", Modifier.weight(1f), height = 44.dp) {
+                touches.play(com.pulseloop.emotion.TouchPattern("test.single", "One buzz", listOf(300)))
+            }
+            SecondaryButton("Vibration check", Modifier.weight(1f), height = 44.dp, onClick = onOpenVibeCheck)
         }
         if (ringOn && bleClient.hasLastKnownRing) {
             TextButton(onClick = { onOpenOriginalUi("pairing") }, modifier = Modifier.fillMaxWidth()) {
@@ -157,7 +191,16 @@ fun RingScreen(bleClient: RingBLEClient, touches: RingTouches, onOpenOriginalUi:
             Text("›", color = EColors.textMuted, fontSize = 22.sp)
         }
 
+        StatsSection(onOpenOriginalUi)
+
         SectionLabel("MORE")
+        Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(EColors.card).padding(horizontal = 16.dp)) {
+            MoreLink("Reminders & quiet hours", onOpenReminders)
+            androidx.compose.material3.HorizontalDivider(color = EColors.line)
+            MoreLink("Guides & help", onOpenLearn)
+            androidx.compose.material3.HorizontalDivider(color = EColors.line)
+            MoreLink("Privacy, export & delete") { confirmReset = true }
+        }
         OutlinedButton(onClick = { onOpenOriginalUi("settings/wearable") }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
             Text("Manage ring", color = EColors.text)
         }
@@ -211,6 +254,15 @@ private fun WatchCard() {
             else "Pixel Watch, Galaxy Watch and other Wear OS watches: install Kinnora on the watch (the \"wear\" app in this project), keep it paired to this phone, then tap Look again.",
             color = EColors.textMuted, fontSize = 12.sp,
         )
+        if (ready) {
+            val remindersOnWatch by WatchLink.remindersOnWatch.collectAsState()
+            ToggleRow(
+                "Reminders on the watch",
+                if (remindersOnWatch) "Your watch shows the upcoming reminders and taps each one with its feeling. Your phone stays quiet so you don't get two."
+                else "Your phone shows each reminder; the watch plays the touch when no ring is connected.",
+                remindersOnWatch,
+            ) { WatchLink.setRemindersOnWatch(it) }
+        }
         OutlinedButton(
             onClick = { WatchLink.play(Feeling.GRATITUDE.touch, force = true) },
             enabled = ready,
@@ -237,5 +289,62 @@ private fun DeviceSwitch(title: String, detail: String, checked: Boolean, onChan
             checked = checked, onCheckedChange = onChange,
             colors = SwitchDefaults.colors(checkedThumbColor = EColors.onAccent, checkedTrackColor = EColors.accent),
         )
+    }
+}
+
+
+@Composable
+private fun MoreLink(title: String, onClick: () -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().heightIn(min = 52.dp).clickable(onClick = onClick),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(title, color = EColors.text, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+        Text("›", color = EColors.textMuted, fontSize = 22.sp)
+    }
+}
+
+/**
+ * Your stats (iOS `RingStatsSection`): the latest heart rate, HRV and stress from the ring, behind
+ * the optional-stats switches. Sleep and activity open the full health screens.
+ */
+@Composable
+private fun StatsSection(onOpenOriginalUi: (route: String?) -> Unit) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val data = remember { com.pulseloop.emotion.EmotionData.get(context) }
+    val profile by data.state.collectAsState()
+    val p = profile.profile
+    var readings by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<List<Triple<String, String, Long?>>>(emptyList()) }
+    LaunchedEffect(p.statsHeart) { if (p.statsHeart) readings = com.pulseloop.emotion.CalmCue.latestReadings(context) }
+    if (p.statsHeart || p.statsSleep || p.statsActivity) {
+        SectionLabel("YOUR STATS")
+        if (p.statsHeart) Column(
+            Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(EColors.card).padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            if (readings.isEmpty()) Text("No data from your ring yet. Keep it connected; heart data appears after the first sync.", color = EColors.textSecondary, fontSize = 13.sp)
+            readings.forEach { (name, value, at) ->
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(name, color = EColors.text, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                    Column(horizontalAlignment = Alignment.End) {
+                        Text(value, color = EColors.text, fontSize = 15.sp)
+                        at?.let { Text(android.text.format.DateUtils.getRelativeTimeSpanString(it).toString(), color = EColors.textMuted, fontSize = 11.sp) }
+                    }
+                }
+            }
+        }
+        if (p.statsSleep || p.statsActivity) {
+            TextButton(onClick = { onOpenOriginalUi(null) }, modifier = Modifier.fillMaxWidth()) {
+                Text(listOfNotNull("Sleep".takeIf { p.statsSleep }, "Steps & activity".takeIf { p.statsActivity }).joinToString(" and ") + " in health stats", color = EColors.accent)
+            }
+        }
+    }
+    SectionLabel("OPTIONAL STATS")
+    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(EColors.card).padding(horizontal = 16.dp)) {
+        ToggleRow("Heart rate & HRV", checked = p.statsHeart) { on -> data.updateProfile { it.copy(statsHeart = on) } }
+        androidx.compose.material3.HorizontalDivider(color = EColors.line)
+        ToggleRow("Sleep", checked = p.statsSleep) { on -> data.updateProfile { it.copy(statsSleep = on) } }
+        androidx.compose.material3.HorizontalDivider(color = EColors.line)
+        ToggleRow("Steps & activity", checked = p.statsActivity) { on -> data.updateProfile { it.copy(statsActivity = on) } }
     }
 }
